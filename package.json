@@ -1,0 +1,41 @@
+{
+  "name": "cognito-at-edge",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/awslabs/cognito-at-edge"
+  },
+  "description": "Serverless authentication solution to protect your website or Amplify application.",
+  "author": "Hugo David-Boyet <hugodb@amazon.com>",
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "axios": "^0.18.0",
+    "jsonwebtoken": "^8.2.1",
+    "jwk-to-pem": "^2.0.0",
+    "pino": "^5.13.2"
+  },
+  "devDependencies": {
+    "eslint": "^6.2.2",
+    "jest": "^24.8.0"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "keywords": [
+    "aws",
+    "cognito",
+    "userpool",
+    "cloudfront",
+    "lambda",
+    "edge",
+    "private",
+    "website"
+  ]
+}
