@@ -87,10 +87,11 @@ describe('private functions', () => {
   });
 
   test('should getIdTokenFromCookie', () => {
+    const appClientName = 'toto,./;;..-_lol123';
     expect(
       authenticator._getIdTokenFromCookie([{
         key: 'Cookie',
-        value: `CognitoIdentityServiceProvider.5uka3k8840tap1g1i1617jh8pi.MyFederation_toto123.idToken=wrong; CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.MyFederation_toto123.idToken=${tokenData.id_token}; CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.MyFederation_toto123.idToken=${tokenData.id_token}; CognitoIdentityServiceProvider.5ukasw8840tap1g1i1617jh8pi.MyFederation_toto123.idToken=wrong;`,
+        value: `CognitoIdentityServiceProvider.5uka3k8840tap1g1i1617jh8pi.${appClientName}.idToken=wrong; CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${appClientName}.idToken=${tokenData.id_token}; CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${appClientName}.idToken=${tokenData.id_token}; CognitoIdentityServiceProvider.5ukasw8840tap1g1i1617jh8pi.${appClientName}.idToken=wrong;`,
       }]),
     ).toBe(tokenData.id_token);
   });

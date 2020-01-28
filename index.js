@@ -159,7 +159,7 @@ class Authenticator {
   _getIdTokenFromCookie(cookies) {
     this._logger.debug({ msg: 'Extracting authentication token from request cookie', cookies });
     // eslint-disable-next-line no-useless-escape
-    const regex = new RegExp(`${this._userPoolAppId}\.[A-z0-9_]*\.idToken=(.*?);`);
+    const regex = new RegExp(`${this._userPoolAppId}\..+?\.idToken=(.*?);`);
     if (cookies) {
       for (let i = 0; i < cookies.length; i++) {
         const matches = cookies[i].value.match(regex);
