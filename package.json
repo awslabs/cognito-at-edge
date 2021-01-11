@@ -16,14 +16,14 @@
     "test": "jest"
   },
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.21.1",
     "jsonwebtoken": "^8.2.1",
-    "jwk-to-pem": "^2.0.0",
-    "pino": "^5.13.2"
+    "jwk-to-pem": "^2.0.4",
+    "pino": "^6.10.0"
   },
   "devDependencies": {
-    "eslint": "^6.2.2",
-    "jest": "^24.8.0"
+    "eslint": "^7.17.0",
+    "jest": "^26.6.3"
   },
   "engines": {
     "node": ">=8.0.0"
