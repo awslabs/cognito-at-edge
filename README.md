@@ -2,7 +2,8 @@
 *Serverless authentication solution to protect your website or Amplify application.*
 
 ![Architecture](./doc/architecture.png)
-This NodeJS library authenticate CloudFront requests with Lambda@Edge based and a Cognito UserPool.
+
+This NodeJS library authenticates CloudFront requests with Lambda@Edge based on a Cognito UserPool.
 
 ### Requirements
 * NodeJS v10+ (install with [NVM](https://github.com/nvm-sh/nvm))
@@ -15,7 +16,7 @@ Install the `cognito-at-edge` package:
 npm install --save cognito-at-edge
 ```
 
-Create the a Lambda@Edge function with the following content and modify the parameters based on your configuration:
+Create a Lambda@Edge function with the following content and modify the parameters based on your configuration:
 ```
 const { Authenticator } = require('cognito-at-edge');
 
@@ -34,7 +35,7 @@ exports.handler = async (request) => authenticator.handle(request);
 
 ### Getting started
 
-Based on your requirements you can use of the solution below. They all provide the complete infrastructure leveraging `cognito-at-edge` to protect a website or an Amplify application.
+Based on your requirements you can use one of the solutions below. They all provide the complete infrastructure leveraging `cognito-at-edge` to protect a website or an Amplify application.
 
 *WIP*
 
@@ -62,8 +63,12 @@ const authenticator = new Authenticator( ... );
 exports.handler = async (request) => authenticator.handle(request);
 ```
 
-### Contact
-Please fill an issue in the Github repository ([Open issues](https://github.com/awslabs/cognito-at-edge/issues)).
+### Getting Help
+The best way to interact with our team is through GitHub.  You can [open an issue](https://github.com/awslabs/cognito-at-edge/issues/new/choose) 
+and choose from one of our templates for [bug reports](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=bug%2C+needs-triage&template=---bug-report.md&title=), 
+[feature requests](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=feature-request&template=---feature-request.md&title=) or 
+[guidance](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=guidance%2C+needs-triage&template=---questions---help.md&title=).  
 
 ## License
-This project is licensed under the Apache-2.0 License.
+This project is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.html), see 
+LICENSE.txt and NOTICE.txt for more information.
