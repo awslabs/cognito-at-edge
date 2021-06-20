@@ -44,7 +44,10 @@ GitHub provides additional document on [forking a repository](https://help.githu
 Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels (enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any 'help wanted' issues is a great place to start.
 
 ## Testing the code
-To run the tests locally ... [WIP]
+Tests are written using jest.  To run tests invoke
+```
+npm test
+```
 
 
 ## Code of Conduct
