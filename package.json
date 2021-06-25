@@ -13,7 +13,7 @@
     "index.js"
   ],
   "scripts": {
-    "test": "jest"
+    "test": "jest --coverage"
   },
   "dependencies": {
     "axios": "^0.21.1",

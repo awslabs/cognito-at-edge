@@ -43,6 +43,11 @@ describe('private functions', () => {
       });
   });
 
+  test('should throw if unable to fetch JWKS', () => {
+    axios.get.mockRejectedValue(new Error('Unexpected error'));
+    return expect(() => authenticator._fetchJWKS('http://something')).rejects.toThrow();
+  });
+
   test('should get valid decoded token', () => {
     authenticator._jwks = {};
     jwt.decode.mockReturnValueOnce({ header: { kid: 'kid' } });
@@ -57,6 +62,11 @@ describe('private functions', () => {
       .then(res => {
         expect(res).toEqual(tokenData);
       });
+  });
+
+  test('should throw if unable to fetch toekn', () => {
+    axios.request.mockRejectedValue(new Error('Unexpected error'));
+    return expect(() => authenticator._fetchTokensFromCode('htt://redirect', 'AUTH_CODE')).rejects.toThrow();
   });
 
   test('should getRedirectResponse', () => {
@@ -235,7 +245,7 @@ describe('handle', () => {
         headers: {
           location: [{
             key: 'Location',
-            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol',
+            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3F%3Fparam%3D1',
           }],
         },
       },
@@ -281,7 +291,7 @@ const getCloudfrontRequest = () => ({
             "inputTruncated": false
           },
           "clientIp": "2001:0db8:85a3:0:0:8a2e:0370:7334",
-          "querystring": "",
+          "querystring": "?param=1",
           "uri": "/lol",
           "method": "GET",
           "headers": {
