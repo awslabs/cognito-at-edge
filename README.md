@@ -6,6 +6,11 @@ This Node.js package helps you verify that users making requests to a CloudFront
 
 ![Architecture](./doc/architecture.png)
 
+### Alternatives
+
+This package allows you to easily parse and verify Cognito cookies in a Lambda@Edge function. If you want full control over the configuration of AWS resources (CloudFront, Cognito, Lambda@Edge...), this is the solution for you.
+
+If you want to deploy all the required AWS resources in a few clicks, you may want to use [this Serverless Application Repository application](https://console.aws.amazon.com/lambda/home?region=us-east-1#/create/app?applicationId=arn:aws:serverlessrepo:us-east-1:520945424137:applications/cloudfront-authorization-at-edge) ([GitHub](https://github.com/aws-samples/cloudfront-authorization-at-edge)) which provides a complete Auth@Edge solution. Its CloudFormation template has various parameters to support multiple use cases (e.g. bring your own user pool or CloudFront distribution).
 ## Getting started
 ### How To Install
 The preferred way to install the AWS cognito-at-edge for Node.js is to use the [npm](http://npmjs.org/) package manager for Node.js. Simply type the following into a terminal window:
@@ -34,7 +39,7 @@ const authenticator = new Authenticator({
 exports.handler = async (request) => authenticator.handle(request);
 ```
 
-For an explanation of the interactions between CloudFront, Cognito and Lambda@Edge, we recommend reading this [AWS blog article](https://aws.amazon.com/blogs/networking-and-content-delivery/authorizationedge-using-cookies-protect-your-amazon-cloudfront-content-from-being-downloaded-by-unauthenticated-users/) which describe the required architecture to authenticate requests in CloudFront with Cognito.
+For an explanation of the interactions between CloudFront, Cognito and Lambda@Edge, we recommend reading this [AWS blog article](https://aws.amazon.com/blogs/networking-and-content-delivery/authorizationedge-how-to-use-lambdaedge-and-json-web-tokens-to-enhance-web-application-security/) which describe the required architecture to authenticate requests in CloudFront with Cognito.
 
 ## Reference - Authenticator Class
 
