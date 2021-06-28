@@ -64,7 +64,7 @@ describe('private functions', () => {
       });
   });
 
-  test('should throw if unable to fetch toekn', () => {
+  test('should throw if unable to fetch token', () => {
     axios.request.mockRejectedValue(new Error('Unexpected error'));
     return expect(() => authenticator._fetchTokensFromCode('htt://redirect', 'AUTH_CODE')).rejects.toThrow();
   });
