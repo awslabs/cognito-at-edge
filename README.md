@@ -2,9 +2,9 @@
 
 *Cognito authentication made easy to protect your website with CloudFront and Lambda@Edge.*
 
-![Architecture](./doc/architecture.png)
+This Node.js package helps you verify that users making requests to a CloudFront distribution are authenticated using a Cognito user pool. It achieves that by looking at the cookies included in the request and, if the requester is not authenticated, it will redirect then to the user pool's login page.
 
-This Node.js library authenticate CloudFront requests with Lambda@Edge based and a Cognito UserPool.
+![Architecture](./doc/architecture.png)
 
 ## Getting started
 ### How To Install
@@ -15,6 +15,8 @@ npm install cognito-at-edge
 ```
 
 ### Usage
+
+To use the package, you must create a [Lambda@Edge function](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html) and associate it with the CloudFront distribution's *viewer request* events.
 
 Within your Lambda@Edge function, you can import and use the `Authenticator` class as shown here:
 
