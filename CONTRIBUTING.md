@@ -43,7 +43,18 @@ GitHub provides additional document on [forking a repository](https://help.githu
 ## Finding contributions to work on
 Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels (enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any 'help wanted' issues is a great place to start.
 
-## Testing the code
+## Development Process
+
+### Setting up for local development
+
+```
+git clone git@github.com:awslabs/cognito-at-edge.git
+cd cognito-at-edge/
+
+npm install
+```
+
+### Testing the code
 Tests are written using jest.  To run tests invoke
 ```
 npm test
