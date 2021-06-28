@@ -11,8 +11,11 @@ This Node.js package helps you verify that users making requests to a CloudFront
 This package allows you to easily parse and verify Cognito cookies in a Lambda@Edge function. If you want full control over the configuration of AWS resources (CloudFront, Cognito, Lambda@Edge...), this is the solution for you.
 
 If you want to deploy all the required AWS resources in a few clicks, you may want to use [this Serverless Application Repository application](https://console.aws.amazon.com/lambda/home?region=us-east-1#/create/app?applicationId=arn:aws:serverlessrepo:us-east-1:520945424137:applications/cloudfront-authorization-at-edge) ([GitHub](https://github.com/aws-samples/cloudfront-authorization-at-edge)) which provides a complete Auth@Edge solution. Its CloudFormation template has various parameters to support multiple use cases (e.g. bring your own user pool or CloudFront distribution).
+
 ## Getting started
+
 ### How To Install
+
 The preferred way to install the AWS cognito-at-edge for Node.js is to use the [npm](http://npmjs.org/) package manager for Node.js. Simply type the following into a terminal window:
 
 ``` shell
@@ -56,23 +59,28 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
 *This is the class constructor.*
 
 ### handle(request)
+
 * `request` *Object* Lambda@Edge request object
   * See AWS doc for details: [Lambda@Edge events](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html)
 
 Use it as your Lambda Handler. It will authenticate each query.
+
 ```
 const authenticator = new Authenticator( ... );
 exports.handler = async (request) => authenticator.handle(request);
 ```
 
 ### Getting Help
+
 The best way to interact with our team is through GitHub.  You can [open an issue](https://github.com/awslabs/cognito-at-edge/issues/new/choose) 
 and choose from one of our templates for [bug reports](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=bug%2C+needs-triage&template=---bug-report.md&title=), 
 [feature requests](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=feature-request&template=---feature-request.md&title=) or 
 [question](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=question%2C+needs-triage&template=---questions---help.md&title=).  
 
 ## Contributing
+
 We welcome community contributions and pull requests. See [CONTRIBUTING.md](https://github.com/awslabs/cognito-at-edge/blob/main/CONTRIBUTING.md) for information on how to set up a development environment and submit code.
 
 ### License
+
 This project is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.html), see LICENSE.txt and NOTICE.txt for more information.
