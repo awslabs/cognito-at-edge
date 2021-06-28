@@ -1,48 +1,53 @@
-## cognito-at-edge
-*Serverless authentication solution to protect your website or Amplify application.*
+# Cognito@Edge
+
+*Cognito authentication made easy to protect your website with CloudFront and Lambda@Edge.*
+
+This Node.js package helps you verify that users making requests to a CloudFront distribution are authenticated using a Cognito user pool. It achieves that by looking at the cookies included in the request and, if the requester is not authenticated, it will redirect then to the user pool's login page.
 
 ![Architecture](./doc/architecture.png)
 
-This NodeJS library authenticates CloudFront requests with Lambda@Edge based on a Cognito UserPool.
+### Alternatives
 
-### Requirements
-* NodeJS v10+ (install with [NVM](https://github.com/nvm-sh/nvm))
-* aws-cli installed and configured ([installation guide](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html))
+This package allows you to easily parse and verify Cognito cookies in a Lambda@Edge function. If you want full control over the configuration of AWS resources (CloudFront, Cognito, Lambda@Edge...), this is the solution for you.
+
+If you want to deploy all the required AWS resources in a few clicks, you may want to use [this Serverless Application Repository application](https://console.aws.amazon.com/lambda/home?region=us-east-1#/create/app?applicationId=arn:aws:serverlessrepo:us-east-1:520945424137:applications/cloudfront-authorization-at-edge) ([GitHub](https://github.com/aws-samples/cloudfront-authorization-at-edge)) which provides a complete Auth@Edge solution. Its CloudFormation template has various parameters to support multiple use cases (e.g. bring your own user pool or CloudFront distribution).
+
+## Getting started
+
+### How To Install
+
+The preferred way to install the AWS cognito-at-edge for Node.js is to use the [npm](http://npmjs.org/) package manager for Node.js. Simply type the following into a terminal window:
+
+``` shell
+npm install cognito-at-edge
+```
 
 ### Usage
 
-Install the `cognito-at-edge` package:
-```
-npm install --save cognito-at-edge
-```
+To use the package, you must create a [Lambda@Edge function](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html) and associate it with the CloudFront distribution's *viewer request* events.
 
-Create a Lambda@Edge function with the following content and modify the parameters based on your configuration:
-```
+Within your Lambda@Edge function, you can import and use the `Authenticator` class as shown here:
+
+``` js
 const { Authenticator } = require('cognito-at-edge');
 
 const authenticator = new Authenticator({
+  // Replace these parameter values with those of your own environment
   region: 'us-east-1', // user pool region
-  userPoolId: 'us-east-1_tyo1a1FHH',
-  userPoolAppId: '63gcbm2jmskokurt5ku9fhejc6',
-  userPoolDomain: 'domain.auth.us-east-1.amazoncognito.com',
-  logLevel: 'error',
+  userPoolId: 'us-east-1_tyo1a1FHH', // user pool ID
+  userPoolAppId: '63gcbm2jmskokurt5ku9fhejc6', // user pool app client ID
+  userPoolDomain: 'domain.auth.us-east-1.amazoncognito.com', // user pool domain
 });
 
 exports.handler = async (request) => authenticator.handle(request);
 ```
 
-**Every `request` will be authenticated by the `Authenticator.handle` function.**
+For an explanation of the interactions between CloudFront, Cognito and Lambda@Edge, we recommend reading this [AWS blog article](https://aws.amazon.com/blogs/networking-and-content-delivery/authorizationedge-how-to-use-lambdaedge-and-json-web-tokens-to-enhance-web-application-security/) which describe the required architecture to authenticate requests in CloudFront with Cognito.
 
-### Getting started
+## Reference - Authenticator Class
 
-Based on your requirements you can use one of the solutions below. They all provide the complete infrastructure leveraging `cognito-at-edge` to protect a website or an Amplify application.
+### Authenticator(params)
 
-*WIP*
-
-
-### Reference
-#### Authenticator Class
-##### Authenticator(params)
 * `params` *Object* Authenticator parameters:
   * `region` *string* Cognito UserPool region (eg: `us-east-1`)
   * `userPoolId` *string* Cognito UserPool ID (eg: `us-east-1_tyo1a1FHH`)
@@ -53,22 +58,29 @@ Based on your requirements you can use one of the solutions below. They all prov
 
 *This is the class constructor.*
 
-##### handle(request)
-* `request` *Object* Lambda@Edge request Object
-  * cf AWS doc for details: [Lambda@Edge events](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html)
+### handle(request)
+
+* `request` *Object* Lambda@Edge request object
+  * See AWS doc for details: [Lambda@Edge events](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html)
 
 Use it as your Lambda Handler. It will authenticate each query.
+
 ```
 const authenticator = new Authenticator( ... );
 exports.handler = async (request) => authenticator.handle(request);
 ```
 
 ### Getting Help
+
 The best way to interact with our team is through GitHub.  You can [open an issue](https://github.com/awslabs/cognito-at-edge/issues/new/choose) 
 and choose from one of our templates for [bug reports](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=bug%2C+needs-triage&template=---bug-report.md&title=), 
 [feature requests](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=feature-request&template=---feature-request.md&title=) or 
 [question](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=question%2C+needs-triage&template=---questions---help.md&title=).  
 
-## License
-This project is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.html), see 
-LICENSE.txt and NOTICE.txt for more information.
+## Contributing
+
+We welcome community contributions and pull requests. See [CONTRIBUTING.md](https://github.com/awslabs/cognito-at-edge/blob/main/CONTRIBUTING.md) for information on how to set up a development environment and submit code.
+
+### License
+
+This project is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.html), see LICENSE.txt and NOTICE.txt for more information.
