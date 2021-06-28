@@ -10,6 +10,7 @@ const { Authenticator } = require('../index');
 const DATE = new Date('2017');
 global.Date = class extends Date {
   constructor() {
+    super();
     return DATE;
   }
 };
