@@ -52,6 +52,7 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
   * `region` *string* Cognito UserPool region (eg: `us-east-1`)
   * `userPoolId` *string* Cognito UserPool ID (eg: `us-east-1_tyo1a1FHH`)
   * `userPoolAppId` *string* Cognito UserPool Application ID (eg: `63gcbm2jmskokurt5ku9fhejc6`)
+  * `userPoolAppSecret` *string* Cognito UserPool Application Secret (eg: `oh470px2i0uvy4i2ha6sju0vxe4ata9ol3m63ufhs2t8yytwjn7p`)
   * `userPoolDomain` *string* Cognito UserPool domain (eg: `your-domain.auth.us-east-1.amazoncognito.com`)
   * `cookieExpirationDays` *number* (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`)
   * `logLevel` *string* (Optional) Logging level. Default: `'silent'`. One of `'fatal'`, `'error'`, `'warn'`, `'info'`, `'debug'`, `'trace'` or `'silent'`.

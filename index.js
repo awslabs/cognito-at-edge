@@ -11,6 +11,7 @@ class Authenticator {
     this._region = params.region;
     this._userPoolId = params.userPoolId;
     this._userPoolAppId = params.userPoolAppId;
+    this._userPoolAppSecret = params.userPoolAppSecret;
     this._userPoolDomain = params.userPoolDomain;
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
 
@@ -81,10 +82,14 @@ class Authenticator {
    * @return {Promise} Authenticated user tokens.
    */
   _fetchTokensFromCode(redirectURI, code) {
+    const authorization = this._userPoolAppSecret && Buffer.from(`${this._userPoolAppId}:${this._userPoolAppSecret}`).toString('base64');
     const request = {
       url: `https://${this._userPoolDomain}/oauth2/token`,
       method: 'post',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...(authorization && {'Authorization': `Basic ${authorization}`}),
+      },
       data: querystring.stringify({
         client_id:	this._userPoolAppId,
         code:	code,
