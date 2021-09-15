@@ -25,6 +25,7 @@ describe('private functions', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
+      disableCookieDomain: false,
       logLevel: 'error',
     });
   });
@@ -97,6 +98,43 @@ describe('private functions', () => {
     expect(authenticator._getVerifiedToken).toHaveBeenCalled();
   });
 
+  test('should not return cookie domain', () => {
+    const authenticatorWithNoCookieDomain = new Authenticator({
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_abcdef123',
+      userPoolAppId: '123456789qwertyuiop987abcd',
+      userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
+      cookieExpirationDays: 365,
+      disableCookieDomain: true,
+      logLevel: 'error',
+    });
+  
+    const username = 'toto';
+    const domain = 'example.com';
+    const path = '/test';
+    jest.spyOn(authenticatorWithNoCookieDomain, '_getVerifiedToken');
+    authenticatorWithNoCookieDomain._getVerifiedToken.mockReturnValueOnce({ token_use: 'id', 'cognito:username': username });
+  
+    const response = authenticatorWithNoCookieDomain._getRedirectResponse(tokenData, domain, path);
+    expect(response).toMatchObject({
+      status: '302',
+      headers: {
+        location: [{
+          key: 'Location',
+          value: path,
+        }],
+      },
+    });
+    expect(response.headers['set-cookie']).toEqual(expect.arrayContaining([
+      {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Expires=${DATE}; Secure`},
+      {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Expires=${DATE}; Secure`},
+      {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone email profile openid aws.cognito.signin.user.admin; Expires=${DATE}; Secure`},
+      {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Expires=${DATE}; Secure`},
+      {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Expires=${DATE}; Secure`},
+    ]));
+    expect(authenticatorWithNoCookieDomain._getVerifiedToken).toHaveBeenCalled();
+  });
+
   test('should getIdTokenFromCookie', () => {
     const appClientName = 'toto,./;;..-_lol123';
     expect(
@@ -124,6 +162,7 @@ describe('createAuthenticator', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
+      disableCookieDomain: true
     };
   });
 
@@ -133,6 +172,11 @@ describe('createAuthenticator', () => {
 
   test('should create authenticator without cookieExpirationDay', () => {
     delete params.cookieExpirationDays;
+    expect(typeof new Authenticator(params)).toBe('object');
+  });
+
+  test('should create authenticator without disableCookieDomain', () => {
+    delete params.disableCookieDomain;
     expect(typeof new Authenticator(params)).toBe('object');
   });
 
@@ -184,6 +228,11 @@ describe('createAuthenticator', () => {
   test('should fail when creating authenticator with invalid cookieExpirationDay', () => {
     params.cookieExpirationDays = '123';
     expect(() => new Authenticator(params)).toThrow('cookieExpirationDays');
+  });
+
+  test('should fail when creating authenticator with invalid disableCookieDomain', () => {
+    params.disableCookieDomain = '123';
+    expect(() => new Authenticator(params)).toThrow('disableCookieDomain');
   });
 });
 

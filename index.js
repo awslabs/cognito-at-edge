@@ -14,7 +14,7 @@ class Authenticator {
     this._userPoolAppSecret = params.userPoolAppSecret;
     this._userPoolDomain = params.userPoolDomain;
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
-
+    this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true) ? true : false;
     this._issuer = `https://cognito-idp.${params.region}.amazonaws.com/${params.userPoolId}`;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._logger = pino({
@@ -39,6 +39,9 @@ class Authenticator {
     });
     if (params.cookieExpirationDays && typeof params.cookieExpirationDays !== 'number') {
       throw new Error('Expected params.cookieExpirationDays to be a number');
+    }
+    if ('disableCookieDomain' in params && typeof params.disableCookieDomain !== 'boolean') {
+      throw new Error('Expected params.disableCookieDomain to be a boolean');
     }
   }
 
@@ -120,8 +123,9 @@ class Authenticator {
     const decoded = this._getVerifiedToken(tokens.id_token);
     const username = decoded['cognito:username'];
     const usernameBase = `${this._cookieBase}.${username}`;
-    const directives = `Domain=${domain}; Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure`;
-
+    const directives = (!this._disableCookieDomain) ? 
+      `Domain=${domain}; Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure` : 
+      `Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure`;
     const response = {
       status: '302' ,
       headers: {
