@@ -1,0 +1,6 @@
+unreleased=true
+future-release=1.1.0
+issues-wo-labels=false
+enhancement-label=**Added:**
+enhancement-labels=added-feature
+bugs-label=**Fixed:**
