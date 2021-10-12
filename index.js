@@ -1,9 +1,7 @@
-const jwt = require('jsonwebtoken');
-const jwkToPem = require('jwk-to-pem');
-const assert = require('assert');
 const axios = require('axios');
 const querystring = require('querystring');
 const pino = require('pino');
+const awsJwtVerify = require('aws-jwt-verify');
 
 class Authenticator {
   constructor(params) {
@@ -15,11 +13,15 @@ class Authenticator {
     this._userPoolDomain = params.userPoolDomain;
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
     this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true) ? true : false;
-    this._issuer = `https://cognito-idp.${params.region}.amazonaws.com/${params.userPoolId}`;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._logger = pino({
       level: params.logLevel || 'silent', // Default to silent
       base: null, //Remove pid, hostname and name logging as not usefull for Lambda
+    });
+    this._jwtVerifier = awsJwtVerify.CognitoJwtVerifier.create({
+      userPoolId: params.userPoolId,
+      clientId: params.userPoolAppId,
+      tokenUse: 'id',
     });
   }
 
@@ -43,39 +45,6 @@ class Authenticator {
     if ('disableCookieDomain' in params && typeof params.disableCookieDomain !== 'boolean') {
       throw new Error('Expected params.disableCookieDomain to be a boolean');
     }
-  }
-
-  /**
-   * Download JSON Web Key Set (JWKS) from the UserPool.
-   * @param  {String} issuer URI of the UserPool.
-   * @return {Promise} Request.
-   */
-  _fetchJWKS() {
-    this._jwks = {};
-    const URL = `${this._issuer}/.well-known/jwks.json`;
-    this._logger.debug(`Fetching JWKS from ${URL}`);
-    return axios.get(URL)
-      .then(resp => {
-        resp.data.keys.forEach(key => this._jwks[key.kid] = key);
-      })
-      .catch(err => {
-        this._logger.error(`Unable to fetch JWKS from ${URL}`);
-        throw err;
-      });
-  }
-
-  /**
-   * Verify that the current token is valid. Throw an error if not.
-   * @param  {String} token Token to verify.
-   * @return {Object} Decoded token.
-   */
-  _getVerifiedToken(token) {
-    this._logger.debug({ msg: 'Verifying token...', token });
-    const decoded = jwt.decode(token, {complete: true});
-    const kid = decoded.header.kid;
-    const verified = jwt.verify(token, jwkToPem(this._jwks[kid]), { audience: this._userPoolAppId, issuer: this._issuer });
-    assert.strictEqual(verified.token_use, 'id');
-    return verified;
   }
 
   /**
@@ -119,8 +88,8 @@ class Authenticator {
    * @param  {String} location Path to redirection.
    * @return {Object} Lambda@Edge response.
    */
-  _getRedirectResponse(tokens, domain, location) {
-    const decoded = this._getVerifiedToken(tokens.id_token);
+  async _getRedirectResponse(tokens, domain, location) {
+    const decoded = await this._jwtVerifier.verify(tokens.id_token);
     const username = decoded['cognito:username'];
     const usernameBase = `${this._cookieBase}.${username}`;
     const directives = (!this._disableCookieDomain) ? 
@@ -193,10 +162,6 @@ class Authenticator {
   async handle(event) {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
-    if (!this._jwks) {
-      await this._fetchJWKS();
-    }
-
     const { request } = event.Records[0].cf;
     const requestParams = querystring.parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
@@ -204,11 +169,12 @@ class Authenticator {
 
     try {
       const token = this._getIdTokenFromCookie(request.headers.cookie);
-      const user = this._getVerifiedToken(token);
-      this._logger.info({ msg: 'Forwading request', path: request.uri, user });
+      this._logger.debug({ msg: 'Verifying token...', token });
+      const user = await this._jwtVerifier.verify(token);
+      this._logger.info({ msg: 'Forwarding request', path: request.uri, user });
       return request;
     } catch (err) {
-      this._logger.debug("User isn't authenticated");
+      this._logger.debug("User isn't authenticated: %s", err);
       if (requestParams.code) {
         return this._fetchTokensFromCode(redirectURI, requestParams.code)
           .then(tokens => this._getRedirectResponse(tokens, cfDomain, decodeURIComponent(requestParams.state)));
