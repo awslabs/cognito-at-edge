@@ -15,6 +15,7 @@ class Authenticator {
     this._userPoolDomain = params.userPoolDomain;
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
     this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true) ? true : false;
+    this._ipAllowList = params.ipAllowList || [];  
     this._issuer = `https://cognito-idp.${params.region}.amazonaws.com/${params.userPoolId}`;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._logger = pino({
@@ -201,6 +202,15 @@ class Authenticator {
     const requestParams = querystring.parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
     const redirectURI = `https://${cfDomain}`;
+    const clientIP = request.clientIp
+
+    if (this._ipAllowList) {
+      for (let i = 0; i < this._ipAllowList.length; i++) {
+        if (clientIP == this._ipAllowList[i]) {
+          return request;
+        }
+      }      
+    }
 
     try {
       const token = this._getIdTokenFromCookie(request.headers.cookie);
