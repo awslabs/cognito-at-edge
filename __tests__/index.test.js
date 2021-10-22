@@ -1,9 +1,6 @@
 const axios = require('axios');
-const jwt = require('jsonwebtoken');
 
 jest.mock('axios');
-jest.mock('jwk-to-pem');
-jest.mock('jsonwebtoken');
 
 const { Authenticator } = require('../index');
 
@@ -30,33 +27,6 @@ describe('private functions', () => {
     });
   });
 
-  test('JWKS should be false by default', () => {
-    expect(authenticator._jwks).toBeFalsy();
-  });
-
-  test('should fetch JWKS', () => {
-    axios.get.mockResolvedValue({ data: jwksData });
-    return authenticator._fetchJWKS('http://something')
-      .then(() => {
-        expect(authenticator._jwks).toEqual({
-          '1234example=': { 'kid': '1234example=', 'alg': 'RS256', 'kty': 'RSA', 'e': 'AQAB', 'n': '1234567890', 'use': 'sig' },
-          '5678example=': { 'kid': '5678example=', 'alg': 'RS256', 'kty': 'RSA', 'e': 'AQAB', 'n': '987654321', 'use': 'sig' },
-        });
-      });
-  });
-
-  test('should throw if unable to fetch JWKS', () => {
-    axios.get.mockRejectedValue(new Error('Unexpected error'));
-    return expect(() => authenticator._fetchJWKS('http://something')).rejects.toThrow();
-  });
-
-  test('should get valid decoded token', () => {
-    authenticator._jwks = {};
-    jwt.decode.mockReturnValueOnce({ header: { kid: 'kid' } });
-    jwt.verify.mockReturnValueOnce({ token_use: 'id', attribute: 'valid' });
-    expect(authenticator._getVerifiedToken('valid-token')).toEqual({ token_use: 'id', attribute: 'valid' });
-  });
-
   test('should fetch token', () => {
     axios.request.mockResolvedValue({ data: tokenData });
 
@@ -71,14 +41,14 @@ describe('private functions', () => {
     return expect(() => authenticator._fetchTokensFromCode('htt://redirect', 'AUTH_CODE')).rejects.toThrow();
   });
 
-  test('should getRedirectResponse', () => {
+  test('should getRedirectResponse', async () => {
     const username = 'toto';
     const domain = 'example.com';
     const path = '/test';
-    jest.spyOn(authenticator, '_getVerifiedToken');
-    authenticator._getVerifiedToken.mockReturnValueOnce({ token_use: 'id', 'cognito:username': username });
+    jest.spyOn(authenticator._jwtVerifier, 'verify');
+    authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
 
-    const response = authenticator._getRedirectResponse(tokenData, domain, path);
+    const response = await authenticator._getRedirectResponse(tokenData, domain, path);
     expect(response).toMatchObject({
       status: '302',
       headers: {
@@ -95,10 +65,10 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${DATE}; Secure`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${DATE}; Secure`},
     ]));
-    expect(authenticator._getVerifiedToken).toHaveBeenCalled();
+    expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
   });
 
-  test('should not return cookie domain', () => {
+  test('should not return cookie domain', async () => {
     const authenticatorWithNoCookieDomain = new Authenticator({
       region: 'us-east-1',
       userPoolId: 'us-east-1_abcdef123',
@@ -108,14 +78,15 @@ describe('private functions', () => {
       disableCookieDomain: true,
       logLevel: 'error',
     });
+    authenticatorWithNoCookieDomain._jwtVerifier.cacheJwks(jwksData);
   
     const username = 'toto';
     const domain = 'example.com';
     const path = '/test';
-    jest.spyOn(authenticatorWithNoCookieDomain, '_getVerifiedToken');
-    authenticatorWithNoCookieDomain._getVerifiedToken.mockReturnValueOnce({ token_use: 'id', 'cognito:username': username });
+    jest.spyOn(authenticatorWithNoCookieDomain._jwtVerifier, 'verify');
+    authenticatorWithNoCookieDomain._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
   
-    const response = authenticatorWithNoCookieDomain._getRedirectResponse(tokenData, domain, path);
+    const response = await authenticatorWithNoCookieDomain._getRedirectResponse(tokenData, domain, path);
     expect(response).toMatchObject({
       status: '302',
       headers: {
@@ -132,7 +103,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Expires=${DATE}; Secure`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Expires=${DATE}; Secure`},
     ]));
-    expect(authenticatorWithNoCookieDomain._getVerifiedToken).toHaveBeenCalled();
+    expect(authenticatorWithNoCookieDomain._jwtVerifier.verify).toHaveBeenCalled();
   });
 
   test('should getIdTokenFromCookie', () => {
@@ -162,7 +133,7 @@ describe('createAuthenticator', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
-      disableCookieDomain: true
+      disableCookieDomain: true,
     };
   });
 
@@ -248,47 +219,38 @@ describe('handle', () => {
       cookieExpirationDays: 365,
       logLevel: 'debug',
     });
-    authenticator._jwks = jwksData;
-    jest.spyOn(authenticator, '_fetchJWKS');
-    jest.spyOn(authenticator, '_getVerifiedToken');
+    authenticator._jwtVerifier.cacheJwks(jwksData);
     jest.spyOn(authenticator, '_getIdTokenFromCookie');
     jest.spyOn(authenticator, '_fetchTokensFromCode');
     jest.spyOn(authenticator, '_getRedirectResponse');
-  });
-
-  test('should fetch JWKS if not present', () => {
-    authenticator._jwks = undefined;
-    authenticator._fetchJWKS.mockResolvedValueOnce(jwksData);
-    return authenticator.handle(getCloudfrontRequest())
-      .catch(err => err)
-      .finally(() => expect(authenticator._fetchJWKS).toHaveBeenCalled());
+    jest.spyOn(authenticator._jwtVerifier, 'verify');
   });
 
   test('should forward request if authenticated', () => {
-    authenticator._getVerifiedToken.mockReturnValueOnce({});
+    authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({}));
     return expect(authenticator.handle(getCloudfrontRequest())).resolves.toEqual(getCloudfrontRequest().Records[0].cf.request)
       .then(() => {
         expect(authenticator._getIdTokenFromCookie).toHaveBeenCalled();
-        expect(authenticator._getVerifiedToken).toHaveBeenCalled();
+        expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
       });
   });
 
   test('should fetch and set token if code is present', () => {
-    authenticator._getVerifiedToken.mockImplementationOnce(() => { throw new Error();});
+    authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error();});
     authenticator._fetchTokensFromCode.mockResolvedValueOnce(tokenData);
     authenticator._getRedirectResponse.mockReturnValueOnce({ response: 'toto' });
     const request = getCloudfrontRequest();
     request.Records[0].cf.request.querystring = 'code=54fe5f4e&state=/lol';
     return expect(authenticator.handle(request)).resolves.toEqual({ response: 'toto' })
       .then(() => {
-        expect(authenticator._getVerifiedToken).toHaveBeenCalled();
+        expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
         expect(authenticator._fetchTokensFromCode).toHaveBeenCalled();
         expect(authenticator._getRedirectResponse).toHaveBeenCalledWith(tokenData, 'd111111abcdef8.cloudfront.net', '/lol');
       });
   });
 
   test('should redirect to auth domain if unauthenticated and no code', () => {
-    authenticator._getVerifiedToken.mockImplementationOnce(() => { throw new Error();});
+    authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error();});
     return expect(authenticator.handle(getCloudfrontRequest())).resolves.toEqual(
       {
         status: 302,
@@ -301,7 +263,7 @@ describe('handle', () => {
       },
     )
       .then(() => {
-        expect(authenticator._getVerifiedToken).toHaveBeenCalled();
+        expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
       });
   });
 });
