@@ -34,7 +34,7 @@ class Authenticator {
     if (typeof params !== 'object') {
       throw new Error('Expected params to be an object');
     }
-    [ 'region', 'userPoolId', 'userPoolAppId', 'userPoolDomain' ].forEach(param => {
+    ['region', 'userPoolId', 'userPoolAppId', 'userPoolDomain'].forEach(param => {
       if (typeof params[param] !== 'string') {
         throw new Error(`Expected params.${param} to be a string`);
       }
@@ -60,13 +60,13 @@ class Authenticator {
       method: 'post',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        ...(authorization && {'Authorization': `Basic ${authorization}`}),
+        ...(authorization && { 'Authorization': `Basic ${authorization}` }),
       },
       data: querystring.stringify({
-        client_id:	this._userPoolAppId,
-        code:	code,
-        grant_type:	'authorization_code',
-        redirect_uri:	redirectURI,
+        client_id: this._userPoolAppId,
+        code: code,
+        grant_type: 'authorization_code',
+        redirect_uri: redirectURI,
       }),
     };
     this._logger.debug({ msg: 'Fetching tokens from grant code...', request, code });
@@ -92,11 +92,11 @@ class Authenticator {
     const decoded = await this._jwtVerifier.verify(tokens.id_token);
     const username = decoded['cognito:username'];
     const usernameBase = `${this._cookieBase}.${username}`;
-    const directives = (!this._disableCookieDomain) ? 
-      `Domain=${domain}; Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure` : 
+    const directives = (!this._disableCookieDomain) ?
+      `Domain=${domain}; Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure` :
       `Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure`;
     const response = {
-      status: '302' ,
+      status: '302',
       headers: {
         'location': [{ key: 'Location', 'value': location }],
         'set-cookie': [
@@ -195,6 +195,29 @@ class Authenticator {
           },
         };
       }
+    }
+  }
+
+  /**
+   * Check if user is authenticated:
+   *   * if authentication cookie is present and valid: return true
+   *   * else return false
+   * @param  {Object}  event Lambda@Edge event.
+   * @return {Boolean} True if user is authenticated.
+   */
+  async isAuthenticated(event) {
+    this._logger.debug({ msg: 'Checking if Lambda@Edge event is authenticated', event });
+
+    const { request } = event.Records[0].cf;
+
+    try {
+      const token = this._getIdTokenFromCookie(request.headers.cookie);
+      this._logger.debug({ msg: 'Verifying token...', token });
+      await this._jwtVerifier.verify(token);
+
+      return true;
+    } catch (err) {
+      return false;
     }
   }
 }
