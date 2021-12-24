@@ -177,7 +177,7 @@ class Authenticator {
       this._logger.debug("User isn't authenticated: %s", err);
       if (requestParams.code) {
         return this._fetchTokensFromCode(redirectURI, requestParams.code)
-          .then(tokens => this._getRedirectResponse(tokens, cfDomain, decodeURIComponent(requestParams.state)));
+          .then(tokens => this._getRedirectResponse(tokens, cfDomain, requestParams.state));
       } else {
         let redirectPath = request.uri;
         if (request.querystring && request.querystring !== '') {
