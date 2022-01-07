@@ -255,9 +255,17 @@ describe('handle', () => {
       {
         status: 302,
         headers: {
-          location: [{
+          'location': [{
             key: 'Location',
             value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3F%3Fparam%3D1',
+          }],
+          'cache-control': [{
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, max-age=0, must-revalidate',
+          }],
+          'pragma': [{
+            key: 'Pragma',
+            value: 'no-cache',
           }],
         },
       },

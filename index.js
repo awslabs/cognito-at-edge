@@ -98,7 +98,18 @@ class Authenticator {
     const response = {
       status: '302' ,
       headers: {
-        'location': [{ key: 'Location', 'value': location }],
+        'location': [{ 
+          key: 'Location',
+          value: location,
+        }],
+        'cache-control': [{
+          key: 'Cache-Control',
+          value: 'no-cache, no-store, max-age=0, must-revalidate',
+        }],
+        'pragma': [{
+          key: 'Pragma',
+          value: 'no-cache',
+        }],
         'set-cookie': [
           {
             key: 'Set-Cookie',
@@ -188,9 +199,17 @@ class Authenticator {
         return {
           status: 302,
           headers: {
-            location: [{
+            'location': [{
               key: 'Location',
               value: userPoolUrl,
+            }],
+            'cache-control': [{
+              key: 'Cache-Control',
+              value: 'no-cache, no-store, max-age=0, must-revalidate',
+            }],
+            'pragma': [{
+              key: 'Pragma',
+              value: 'no-cache',
             }],
           },
         };
