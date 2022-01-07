@@ -162,7 +162,7 @@ describe('createAuthenticator', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
-      disableCookieDomain: true
+      disableCookieDomain: true,
     };
   });
 
@@ -299,12 +299,12 @@ describe('handle', () => {
           }],
           'cache-control': [{
             key: 'Cache-Control',
-            value: 'no-cache, no-store, max-age=0, must-revalidate'
+            value: 'no-cache, no-store, max-age=0, must-revalidate',
           }],
           'pragma': [{
             key: 'Pragma',
-            value: 'no-cache'
-          }]
+            value: 'no-cache',
+          }],
         },
       },
     )
