@@ -131,15 +131,15 @@ class Authenticator {
       headers: {
         'location': [{ 
           key: 'Location',
-           value: location
+          value: location,
         }],
         'cache-control': [{
           key: 'Cache-Control',
-          value: 'no-cache, no-store, max-age=0, must-revalidate'
+          value: 'no-cache, no-store, max-age=0, must-revalidate',
         }],
         'pragma': [{
           key: 'Pragma',
-          value: 'no-cache'
+          value: 'no-cache',
         }],
         'set-cookie': [
           {
@@ -239,12 +239,12 @@ class Authenticator {
             }],
             'cache-control': [{
               key: 'Cache-Control',
-              value: 'no-cache, no-store, max-age=0, must-revalidate'
+              value: 'no-cache, no-store, max-age=0, must-revalidate',
             }],
             'pragma': [{
               key: 'Pragma',
-              value: 'no-cache'
-            }]
+              value: 'no-cache',
+            }],
           },
         };
       }
