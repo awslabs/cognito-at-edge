@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.1](https://github.com/awslabs/cognito-at-edge/tree/1.1.1) (2022-01-07)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.1.0...1.1.1)
+
+**Fixed:**
+
+- Double Decoding of the QueryParams [\#23](https://github.com/awslabs/cognito-at-edge/issues/23)
+- Add Cache-Control headers to redirect responses [\#18](https://github.com/awslabs/cognito-at-edge/issues/18)
+- Fix for double query params decoding [\#24](https://github.com/awslabs/cognito-at-edge/pull/24) ([akhudiakov97](https://github.com/akhudiakov97))
+- Add cache-control & pragma headers to redirect responses [\#19](https://github.com/awslabs/cognito-at-edge/pull/19) ([ineale2](https://github.com/ineale2))
+
+**Merged pull requests:**
+
+- Use aws-jwt-verify to verify JSON Web Tokens [\#15](https://github.com/awslabs/cognito-at-edge/pull/15) ([ottokruse](https://github.com/ottokruse))
+
 ## [1.1.0](https://github.com/awslabs/cognito-at-edge/tree/1.1.0) (2021-10-05)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.0.0...1.1.0)
@@ -8,7 +23,7 @@ Merge PRs by external contributors to add support for new use cases
 
 **Added:**
 
-- added optional disableCookieDomain parameter \(\#10\) [\#11](https://github.com/awslabs/cognito-at-edge/pull/11) ([jwwheeleriv](https://github.com/jwwheeleriv))
+- added optional disableCookieDomain parameter [\#11](https://github.com/awslabs/cognito-at-edge/pull/11) ([jwwheeleriv](https://github.com/jwwheeleriv))
 - add authentication to the fetch tokens from code [\#9](https://github.com/awslabs/cognito-at-edge/pull/9) ([yoavya](https://github.com/yoavya))
 
 **Closed issues:**

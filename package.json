@@ -1,12 +1,12 @@
 {
   "name": "cognito-at-edge",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/awslabs/cognito-at-edge"
   },
   "description": "Cognito authentication made easy to protect your website with CloudFront and Lambda@Edge.",
-  "author": "AWS Innovation Labs <aws-innovation-labs@amazon.com>",
+  "author": "AWS Builder Labs <aws-builder-labs@amazon.com>",
   "license": "Apache-2.0",
   "main": "index.js",
   "files": [
