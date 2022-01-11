@@ -2,7 +2,7 @@ const axios = require('axios');
 
 jest.mock('axios');
 
-const { Authenticator } = require('../index');
+const { Authenticator } = require('../dist/index');
 
 const DATE = new Date('2017');
 global.Date = class extends Date {

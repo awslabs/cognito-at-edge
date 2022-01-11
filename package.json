@@ -8,11 +8,13 @@
   "description": "Cognito authentication made easy to protect your website with CloudFront and Lambda@Edge.",
   "author": "AWS Builder Labs <aws-builder-labs@amazon.com>",
   "license": "Apache-2.0",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
-    "index.js"
+    "/dist"
   ],
   "scripts": {
+    "build": "tsc",
     "test": "jest --coverage"
   },
   "dependencies": {
@@ -21,8 +23,12 @@
     "pino": "^6.10.0"
   },
   "devDependencies": {
-    "eslint": "^7.17.0",
-    "jest": "^26.6.3"
+    "@types/aws-lambda": "^8.10.89",
+    "@typescript-eslint/eslint-plugin": "^5.9.1",
+    "@typescript-eslint/parser": "^5.9.1",
+    "eslint": "^7.32.0",
+    "jest": "^26.6.3",
+    "typescript": "^4.5.4"
   },
   "engines": {
     "node": ">=10.0.0"
