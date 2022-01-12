@@ -3,3 +3,5 @@ package-lock.json
 output-template.yml
 *.tgz
 coverage/
+dist/
+.DS_Store

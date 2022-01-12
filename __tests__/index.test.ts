@@ -1,10 +1,11 @@
-const axios = require('axios');
+import axios from 'axios';
 
 jest.mock('axios');
 
-const { Authenticator } = require('../index');
+import { Authenticator } from '../src/';
 
 const DATE = new Date('2017');
+// @ts-ignore
 global.Date = class extends Date {
   constructor() {
     super();
@@ -28,7 +29,7 @@ describe('private functions', () => {
   });
 
   test('should fetch token', () => {
-    axios.request.mockResolvedValue({ data: tokenData });
+    axios.request = jest.fn().mockResolvedValue({ data: tokenData });
 
     return authenticator._fetchTokensFromCode('htt://redirect', 'AUTH_CODE')
       .then(res => {
@@ -37,7 +38,7 @@ describe('private functions', () => {
   });
 
   test('should throw if unable to fetch token', () => {
-    axios.request.mockRejectedValue(new Error('Unexpected error'));
+    axios.request = jest.fn().mockRejectedValue(new Error('Unexpected error'));
     return expect(() => authenticator._fetchTokensFromCode('htt://redirect', 'AUTH_CODE')).rejects.toThrow();
   });
 
@@ -152,7 +153,9 @@ describe('createAuthenticator', () => {
   });
 
   test('should fail when creating authenticator without params', () => {
-    expect(() => new Authenticator()).toThrow('Expected params');
+    // @ts-ignore 
+    // ts-ignore is used here to override typescript's type check in the constructor
+    // this test is still useful when the library is imported to a js file 
     expect(() => new Authenticator()).toThrow('Expected params');
   });
 

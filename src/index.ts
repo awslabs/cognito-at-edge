@@ -1,10 +1,33 @@
-const axios = require('axios');
-const querystring = require('querystring');
-const pino = require('pino');
-const awsJwtVerify = require('aws-jwt-verify');
+import axios from 'axios';
+import { parse, stringify } from 'querystring';
+import pino from 'pino';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { CloudFrontRequestEvent } from 'aws-lambda';
 
-class Authenticator {
-  constructor(params) {
+interface AuthenticatorParams {
+  region: string;
+  userPoolId: string;
+  userPoolAppId: string;
+  userPoolAppSecret?: string;
+  userPoolDomain: string;
+  cookieExpirationDays?: number;
+  disableCookieDomain?: boolean;
+  logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+}
+
+export class Authenticator {
+  _region: string;
+  _userPoolId: string;
+  _userPoolAppId: string;
+  _userPoolAppSecret: string;
+  _userPoolDomain: string;
+  _cookieExpirationDays: number;
+  _disableCookieDomain: boolean;
+  _cookieBase: string;
+  _logger;
+  _jwtVerifier;
+
+  constructor(params: AuthenticatorParams) {
     this._verifyParams(params);
     this._region = params.region;
     this._userPoolId = params.userPoolId;
@@ -18,7 +41,7 @@ class Authenticator {
       level: params.logLevel || 'silent', // Default to silent
       base: null, //Remove pid, hostname and name logging as not usefull for Lambda
     });
-    this._jwtVerifier = awsJwtVerify.CognitoJwtVerifier.create({
+    this._jwtVerifier = CognitoJwtVerifier.create({
       userPoolId: params.userPoolId,
       clientId: params.userPoolAppId,
       tokenUse: 'id',
@@ -57,18 +80,18 @@ class Authenticator {
     const authorization = this._userPoolAppSecret && Buffer.from(`${this._userPoolAppId}:${this._userPoolAppSecret}`).toString('base64');
     const request = {
       url: `https://${this._userPoolDomain}/oauth2/token`,
-      method: 'post',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         ...(authorization && {'Authorization': `Basic ${authorization}`}),
       },
-      data: querystring.stringify({
+      data: stringify({
         client_id:	this._userPoolAppId,
         code:	code,
         grant_type:	'authorization_code',
         redirect_uri:	redirectURI,
       }),
-    };
+    } as const;
     this._logger.debug({ msg: 'Fetching tokens from grant code...', request, code });
     return axios.request(request)
       .then(resp => {
@@ -93,8 +116,8 @@ class Authenticator {
     const username = decoded['cognito:username'];
     const usernameBase = `${this._cookieBase}.${username}`;
     const directives = (!this._disableCookieDomain) ? 
-      `Domain=${domain}; Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure` : 
-      `Expires=${new Date(new Date() * 1 + this._cookieExpirationDays * 864e+5)}; Secure`;
+      `Domain=${domain}; Expires=${new Date(Date.now() + this._cookieExpirationDays * 864e+5)}; Secure` :
+      `Expires=${new Date(Date.now() + this._cookieExpirationDays * 864e+5)}; Secure`;
     const response = {
       status: '302' ,
       headers: {
@@ -170,11 +193,11 @@ class Authenticator {
    * @param  {Object}  event Lambda@Edge event.
    * @return {Promise} CloudFront response.
    */
-  async handle(event) {
+  async handle(event: CloudFrontRequestEvent) {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
-    const requestParams = querystring.parse(request.querystring);
+    const requestParams = parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
     const redirectURI = `https://${cfDomain}`;
 
@@ -217,5 +240,3 @@ class Authenticator {
     }
   }
 }
-
-module.exports.Authenticator = Authenticator;
