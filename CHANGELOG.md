@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/awslabs/cognito-at-edge/tree/1.2.0) (2022-01-12)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.1.1...1.2.0)
+
+**Fixed:**
+
+- Switched to Typescript [\#20](https://github.com/awslabs/cognito-at-edge/issues/20)
+
+**Merged pull requests:**
+
+- Add typescript support [\#26](https://github.com/awslabs/cognito-at-edge/pull/26) ([piotrekwitkowski](https://github.com/piotrekwitkowski))
+
 ## [1.1.1](https://github.com/awslabs/cognito-at-edge/tree/1.1.1) (2022-01-07)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.1.0...1.1.1)
