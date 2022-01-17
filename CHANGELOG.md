@@ -2,15 +2,23 @@
 
 ## [1.2.1](https://github.com/awslabs/cognito-at-edge/tree/1.2.1) (2022-01-17)
 
-[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.1.1...1.2.1)
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.0...1.2.1)
 
 **Fixed:**
 
 - Add npmignore to include dist files in npm releases [\#28](https://github.com/awslabs/cognito-at-edge/pull/28) ([pedromgarcia](https://github.com/pedromgarcia))
 
-**Merged pull requests:**
+## [1.2.0](https://github.com/awslabs/cognito-at-edge/tree/1.2.0) (2022-01-14)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.1.1...1.2.0)
+
+**Added:**
 
 - Add typescript support [\#26](https://github.com/awslabs/cognito-at-edge/pull/26) ([piotrekwitkowski](https://github.com/piotrekwitkowski))
+
+**Closed issues:**
+
+- Switch to typescript [\#20](https://github.com/awslabs/cognito-at-edge/issues/20)
 
 ## [1.1.1](https://github.com/awslabs/cognito-at-edge/tree/1.1.1) (2022-01-10)
 
