@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.1](https://github.com/awslabs/cognito-at-edge/tree/1.2.1) (2022-01-17)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.0...1.2.1)
+
 ## [1.2.0](https://github.com/awslabs/cognito-at-edge/tree/1.2.0) (2022-01-12)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.1.1...1.2.0)
