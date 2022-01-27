@@ -18,8 +18,8 @@
     "test": "jest --coverage"
   },
   "dependencies": {
-    "aws-jwt-verify": "^1.0.1",
-    "axios": "^0.21.1",
+    "aws-jwt-verify": "^2.1.1",
+    "axios": "^0.25.0",
     "pino": "^6.10.0"
   },
   "devDependencies": {
