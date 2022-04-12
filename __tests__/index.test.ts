@@ -256,7 +256,7 @@ describe('handle', () => {
     authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error();});
     return expect(authenticator.handle(getCloudfrontRequest())).resolves.toEqual(
       {
-        status: 302,
+        status: '302',
         headers: {
           'location': [{
             key: 'Location',
