@@ -2,7 +2,7 @@ import axios from 'axios';
 import { parse, stringify } from 'querystring';
 import pino from 'pino';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
-import { CloudFrontRequestEvent } from 'aws-lambda';
+import { CloudFrontRequestEvent, CloudFrontRequestResult } from 'aws-lambda';
 
 interface AuthenticatorParams {
   region: string;
@@ -193,7 +193,7 @@ export class Authenticator {
    * @param  {Object}  event Lambda@Edge event.
    * @return {Promise} CloudFront response.
    */
-  async handle(event: CloudFrontRequestEvent) {
+  async handle(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
@@ -220,7 +220,7 @@ export class Authenticator {
         const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${redirectPath}`;
         this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
         return {
-          status: 302,
+          status: '302',
           headers: {
             'location': [{
               key: 'Location',
