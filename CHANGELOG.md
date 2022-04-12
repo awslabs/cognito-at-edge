@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.2](https://github.com/awslabs/cognito-at-edge/tree/1.2.2) (2022-04-12)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.1...1.2.2)
+
+**Fixed:**
+
+- Fix type mismatch of the status code [\#35](https://github.com/awslabs/cognito-at-edge/pull/35) ([piotrekwitkowski](https://github.com/piotrekwitkowski))
+- fix: update regex to account for idToken being last key value pair in cookie string [\#33](https://github.com/awslabs/cognito-at-edge/pull/33) ([timbakkum](https://github.com/timbakkum))
+
+**Merged pull requests:**
+
+- Update axios and aws-jwt-verify dependencies [\#30](https://github.com/awslabs/cognito-at-edge/pull/30) ([ottokruse](https://github.com/ottokruse))
+
 ## [1.2.1](https://github.com/awslabs/cognito-at-edge/tree/1.2.1) (2022-01-17)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.0...1.2.1)
