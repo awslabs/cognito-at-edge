@@ -14,7 +14,7 @@ global.Date = class extends Date {
 };
 
 describe('private functions', () => {
-  let authenticator;
+  let authenticator: Authenticator;
 
   beforeEach(() => {
     authenticator = new Authenticator({
@@ -125,10 +125,35 @@ describe('private functions', () => {
   });
 
   test('should getIdTokenFromCookie throw on cookies', () => {
+    // @ts-ignore
     expect(() => authenticator._getIdTokenFromCookie()).toThrow('Id token');
     expect(() => authenticator._getIdTokenFromCookie('')).toThrow('Id token');
     expect(() => authenticator._getIdTokenFromCookie([])).toThrow('Id token');
   });
+});
+
+test('should getIdTokenFromCookie when cookies are sent from multiple domains in arbitrary order', () => {
+  const appClientName = 'toto,./;;..-_lol123';
+  const appClientSubDomainName = 'hahabye!@5--ebye456';
+  const parentAppId = '123456789qwertyuiop987abcd';
+  const subDomainAppId = '987654321lkjhgfdsa';
+
+  const authenticatorDifferentAppId = new Authenticator({
+    region: 'us-east-1',
+    userPoolId: 'us-east-1_abcdef123',
+    userPoolAppId: subDomainAppId,
+    userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
+    cookieExpirationDays: 365,
+    disableCookieDomain: true,
+    logLevel: 'error',
+  });
+
+  expect(
+    authenticatorDifferentAppId._getIdTokenFromCookie([{
+      key: 'Cookie',
+      value: `CognitoIdentityServiceProvider.${subDomainAppId}.LastAuthUser=${appClientSubDomainName}; CognitoIdentityServiceProvider.${parentAppId}.${appClientName}.accessToken=${tokenData.access_token};  CognitoIdentityServiceProvider.${parentAppId}.${appClientName}.idToken=${tokenData.id_token}; CognitoIdentityServiceProvider.${parentAppId}.${appClientName}.refreshToken=${tokenData.refresh_token}; CognitoIdentityServiceProvider.${subDomainAppId}.${appClientSubDomainName}.idToken=${tokenDataSubDomain.id_token}; CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${appClientName}.idToken=${tokenData.id_token}; CognitoIdentityServiceProvider.5ukasw8840tap1g1i1617jh8pi.${appClientName}.idToken=wrong;`,
+    }]),
+  ).toBe(tokenDataSubDomain.id_token);
 });
 
 describe('createAuthenticator', () => {
@@ -293,6 +318,14 @@ const jwksData = {
     { "kid": "1234example=", "alg": "RS256", "kty": "RSA", "e": "AQAB", "n": "1234567890", "use": "sig" },
     { "kid": "5678example=", "alg": "RS256", "kty": "RSA", "e": "AQAB", "n": "987654321", "use": "sig" },
   ]
+};
+
+const tokenDataSubDomain = {
+  "access_token":"gfdsgfdsgfdsgfdsgs",
+  "refresh_token":"gfdsgfgfdgsdfgds",
+  "id_token":"hgdshsgsgfsfgtff",
+  "token_type":"Bearer",
+  'expires_in':3600,
 };
 
 const tokenData = {
