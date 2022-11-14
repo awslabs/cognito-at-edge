@@ -12,6 +12,7 @@ interface AuthenticatorParams {
   userPoolDomain: string;
   cookieExpirationDays?: number;
   disableCookieDomain?: boolean;
+  httpOnly?: boolean;
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 }
 
@@ -23,6 +24,7 @@ export class Authenticator {
   _userPoolDomain: string;
   _cookieExpirationDays: number;
   _disableCookieDomain: boolean;
+  _httpOnly: boolean;
   _cookieBase: string;
   _logger;
   _jwtVerifier;
@@ -36,6 +38,7 @@ export class Authenticator {
     this._userPoolDomain = params.userPoolDomain;
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
     this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true) ? true : false;
+    this._httpOnly = ('httpOnly' in params && params.httpOnly === true) ? true : false;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._logger = pino({
       level: params.logLevel || 'silent', // Default to silent
@@ -67,6 +70,9 @@ export class Authenticator {
     }
     if ('disableCookieDomain' in params && typeof params.disableCookieDomain !== 'boolean') {
       throw new Error('Expected params.disableCookieDomain to be a boolean');
+    }
+    if ('httpOnly' in params && typeof params.httpOnly !== 'boolean') {
+      throw new Error('Expected params.httpOnly to be a boolean');
     }
   }
 
@@ -115,9 +121,13 @@ export class Authenticator {
     const decoded = await this._jwtVerifier.verify(tokens.id_token);
     const username = decoded['cognito:username'];
     const usernameBase = `${this._cookieBase}.${username}`;
-    const directives = (!this._disableCookieDomain) ? 
-      `Domain=${domain}; Expires=${new Date(Date.now() + this._cookieExpirationDays * 864e+5)}; Secure` :
-      `Expires=${new Date(Date.now() + this._cookieExpirationDays * 864e+5)}; Secure`;
+    const directives = [
+      ...((this._disableCookieDomain) ? [] : [`Domain=${domain}`]),
+      `Expires=${new Date(Date.now() + this._cookieExpirationDays * 864e+5)}`,
+      'Secure',
+      ...((this._httpOnly) ? ['HttpOnly'] : []),
+    ].join('; ');
+
     const response = {
       status: '302' ,
       headers: {
