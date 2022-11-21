@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/awslabs/cognito-at-edge/tree/1.3.0) (2022-11-21)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.2...1.3.0)
+
+**Added:**
+
+- Add support for HttpOnly cookie flag [\#41](https://github.com/awslabs/cognito-at-edge/pull/41) ([tsop14](https://github.com/tsop14))
+
 ## [1.2.2](https://github.com/awslabs/cognito-at-edge/tree/1.2.2) (2022-04-12)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.1...1.2.2)
