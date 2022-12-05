@@ -3,6 +3,7 @@ import { parse, stringify } from 'querystring';
 import pino from 'pino';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { CloudFrontRequestEvent, CloudFrontRequestResult } from 'aws-lambda';
+import { CookieAttributes, Cookies } from './util/cookie';
 
 interface AuthenticatorParams {
   region: string;
@@ -37,8 +38,8 @@ export class Authenticator {
     this._userPoolAppSecret = params.userPoolAppSecret;
     this._userPoolDomain = params.userPoolDomain;
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
-    this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true) ? true : false;
-    this._httpOnly = ('httpOnly' in params && params.httpOnly === true) ? true : false;
+    this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true);
+    this._httpOnly = ('httpOnly' in params && params.httpOnly === true);
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._logger = pino({
       level: params.logLevel || 'silent', // Default to silent
@@ -121,17 +122,24 @@ export class Authenticator {
     const decoded = await this._jwtVerifier.verify(tokens.id_token);
     const username = decoded['cognito:username'];
     const usernameBase = `${this._cookieBase}.${username}`;
-    const directives = [
-      ...((this._disableCookieDomain) ? [] : [`Domain=${domain}`]),
-      `Expires=${new Date(Date.now() + this._cookieExpirationDays * 864e+5)}`,
-      'Secure',
-      ...((this._httpOnly) ? ['HttpOnly'] : []),
-    ].join('; ');
+    const cookieAttributes: CookieAttributes = {
+      domain: this._disableCookieDomain ? undefined : domain,
+      expires: new Date(Date.now() + this._cookieExpirationDays * 864e+5),
+      secure: true,
+      httpOnly: this._httpOnly,
+    };
+    const cookies = [
+      Cookies.serialize(`${usernameBase}.accessToken`, tokens.access_token, cookieAttributes),
+      Cookies.serialize(`${usernameBase}.idToken`, tokens.id_token, cookieAttributes),
+      Cookies.serialize(`${usernameBase}.refreshToken`, tokens.refresh_token, cookieAttributes),
+      Cookies.serialize(`${usernameBase}.tokenScopesString`, 'phone email profile openid aws.cognito.signin.user.admin', cookieAttributes),
+      Cookies.serialize(`${this._cookieBase}.LastAuthUser`, username, cookieAttributes),
+    ];
 
     const response = {
       status: '302' ,
       headers: {
-        'location': [{ 
+        'location': [{
           key: 'Location',
           value: location,
         }],
@@ -143,28 +151,7 @@ export class Authenticator {
           key: 'Pragma',
           value: 'no-cache',
         }],
-        'set-cookie': [
-          {
-            key: 'Set-Cookie',
-            value: `${usernameBase}.accessToken=${tokens.access_token}; ${directives}`,
-          },
-          {
-            key: 'Set-Cookie',
-            value: `${usernameBase}.idToken=${tokens.id_token}; ${directives}`,
-          },
-          {
-            key: 'Set-Cookie',
-            value: `${usernameBase}.refreshToken=${tokens.refresh_token}; ${directives}`,
-          },
-          {
-            key: 'Set-Cookie',
-            value: `${usernameBase}.tokenScopesString=phone email profile openid aws.cognito.signin.user.admin; ${directives}`,
-          },
-          {
-            key: 'Set-Cookie',
-            value: `${this._cookieBase}.LastAuthUser=${username}; ${directives}`,
-          },
-        ],
+        'set-cookie': cookies.map(c => ({ key: 'Set-Cookie', value: c })),
       },
     };
 
@@ -175,24 +162,25 @@ export class Authenticator {
 
   /**
    * Extract value of the authentication token from the request cookies.
-   * @param  {Array}  cookies Request cookies.
+   * @param  {Array}  cookieHeaders 'Cookie' request headers.
    * @return {String} Extracted access token. Throw if not found.
    */
-  _getIdTokenFromCookie(cookies) {
-    this._logger.debug({ msg: 'Extracting authentication token from request cookie', cookies });
-    // eslint-disable-next-line no-useless-escape
-    const regex = new RegExp(`${this._userPoolAppId}\..+?\.idToken=(.*?)(?:;|$)`);
-    if (cookies) {
-      for (let i = 0; i < cookies.length; i++) {
-        const matches = cookies[i].value.match(regex);
-        if (matches && matches.length > 1) {
-          this._logger.debug({ msg: '  Found token in cookie', token: matches[1] });
-          return matches[1];
-        }
-      }
+  _getIdTokenFromCookie(cookieHeaders: Array<{ key?: string | undefined, value: string }>) {
+    this._logger.debug({ msg: 'Extracting authentication token from request cookie', cookieHeaders });
+
+    const tokenCookieNamePrefix = `${this._cookieBase}.`;
+    const tokenCookieNamePostfix = '.idToken';
+
+    const cookies = cookieHeaders.flatMap(h => Cookies.parse(h.value));
+    const token = cookies.find(c => c.name.startsWith(tokenCookieNamePrefix) && c.name.endsWith(tokenCookieNamePostfix))?.value;
+
+    if (!token) {
+      this._logger.debug("idToken wasn't present in request cookies");
+      throw new Error("idToken isn't present in the request cookies");
     }
-    this._logger.debug("  idToken wasn't present in request cookies");
-    throw new Error("Id token isn't present in the request cookies");
+
+    this._logger.debug({ msg: 'Found idToken in cookie', token });
+    return token;
   }
 
   /**
