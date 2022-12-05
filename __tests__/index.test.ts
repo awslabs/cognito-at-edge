@@ -247,7 +247,7 @@ describe('createAuthenticator', () => {
     expect(typeof new Authenticator(params)).toBe('object');
   });
 
-  test('should create authenticator with httpOnly', () => {
+  test('should create authenticator without httpOnly', () => {
     delete params.httpOnly;
     expect(typeof new Authenticator(params)).toBe('object');
   });
