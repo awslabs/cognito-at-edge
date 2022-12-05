@@ -4,6 +4,8 @@ export interface Cookie {
     value: string;
 }
 
+export type SameSite = 'Strict' | 'Lax' | 'None';
+
 /**
  * Cookie attributes to be used inside 'Set-Cookie' header
  */
@@ -26,6 +28,12 @@ export interface CookieAttributes {
      * Refer to {@link https://www.rfc-editor.org/rfc/rfc6265#section-4.1.2.6 RFC 6265 section 4.1.2.6.} for more details.
      */
     httpOnly?: boolean;
+
+    /**
+     * The SameSite attribute allows you to declare if your cookie should be restricted to a first-party or same-site context.
+     * Refer to {@link https://httpwg.org/http-extensions/draft-ietf-httpbis-rfc6265bis.html#name-samesite-cookiesRFC 6265 section 4.1.2.7.} for more details.
+     */
+    sameSite?: SameSite;
 
     /**
      * The Max-Age attribute indicates the maximum lifetime of the cookie, represented as the number of seconds until
@@ -94,6 +102,7 @@ export class Cookies {
       ...(attributes.maxAge ? [`Max-Age=${attributes.maxAge}`] : []),
       ...(attributes.secure ? ['Secure'] : []),
       ...(attributes.httpOnly ? ['HttpOnly'] : []),
+      ...(attributes.sameSite ? [`SameSite=${attributes.sameSite}`] : []),
     ].join('; ');
   }
 
