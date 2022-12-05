@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/awslabs/cognito-at-edge/tree/1.3.1) (2022-12-05)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.3.0...1.3.1)
+
+**Fixed:**
+
+- Encode illegal characters inside cookies and change cookies parsing logic [\#46](https://github.com/awslabs/cognito-at-edge/pull/46) ([borisfba](https://github.com/borisfba))
+
 ## [1.3.0](https://github.com/awslabs/cognito-at-edge/tree/1.3.0) (2022-11-21)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.2...1.3.0)
