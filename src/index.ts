@@ -175,11 +175,11 @@ export class Authenticator {
     const token = cookies.find(c => c.name.startsWith(tokenCookieNamePrefix) && c.name.endsWith(tokenCookieNamePostfix))?.value;
 
     if (!token) {
-      this._logger.debug("  idToken wasn't present in request cookies");
-      throw new Error("Id token isn't present in the request cookies");
+      this._logger.debug("idToken wasn't present in request cookies");
+      throw new Error("idToken isn't present in the request cookies");
     }
 
-    this._logger.debug({ msg: '  Found token in cookie', token });
+    this._logger.debug({ msg: 'Found idToken in cookie', token });
     return token;
   }
 
