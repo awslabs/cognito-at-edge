@@ -176,6 +176,10 @@ describe('private functions', () => {
   test('should getIdTokenFromCookie throw on cookies', () => {
     expect(() => authenticator._getIdTokenFromCookie([])).toThrow('idToken');
   });
+
+  test('should getIdTokenFromCookie throw on no cookies', () => {
+    expect(() => authenticator._getIdTokenFromCookie()).toThrow('Cookies weren\'t present in the request');
+  });
 });
 
 describe('createAuthenticator', () => {

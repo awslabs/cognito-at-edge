@@ -165,7 +165,12 @@ export class Authenticator {
    * @param  {Array}  cookieHeaders 'Cookie' request headers.
    * @return {String} Extracted access token. Throw if not found.
    */
-  _getIdTokenFromCookie(cookieHeaders: Array<{ key?: string | undefined, value: string }>) {
+  _getIdTokenFromCookie(cookieHeaders: Array<{ key?: string | undefined, value: string }> | undefined) {
+    if (!cookieHeaders) {
+      this._logger.debug("Cookies weren't present in the request");
+      throw new Error("Cookies weren't present in the request");
+    }
+    
     this._logger.debug({ msg: 'Extracting authentication token from request cookie', cookieHeaders });
 
     const tokenCookieNamePrefix = `${this._cookieBase}.`;
