@@ -3,7 +3,9 @@ import { parse, stringify } from 'querystring';
 import pino from 'pino';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { CloudFrontRequestEvent, CloudFrontRequestResult } from 'aws-lambda';
-import { CookieAttributes, Cookies } from './util/cookie';
+import { CookieAttributes, Cookies, SameSite, SAME_SITE_VALUES } from './util/cookie';
+
+
 
 interface AuthenticatorParams {
   region: string;
@@ -14,6 +16,7 @@ interface AuthenticatorParams {
   cookieExpirationDays?: number;
   disableCookieDomain?: boolean;
   httpOnly?: boolean;
+  sameSite?: SameSite;
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 }
 
@@ -26,6 +29,7 @@ export class Authenticator {
   _cookieExpirationDays: number;
   _disableCookieDomain: boolean;
   _httpOnly: boolean;
+  _sameSite?: SameSite;
   _cookieBase: string;
   _logger;
   _jwtVerifier;
@@ -40,6 +44,7 @@ export class Authenticator {
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
     this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true);
     this._httpOnly = ('httpOnly' in params && params.httpOnly === true);
+    this._sameSite = params.sameSite;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._logger = pino({
       level: params.logLevel || 'silent', // Default to silent
@@ -74,6 +79,9 @@ export class Authenticator {
     }
     if ('httpOnly' in params && typeof params.httpOnly !== 'boolean') {
       throw new Error('Expected params.httpOnly to be a boolean');
+    }
+    if ('sameSite' in params && !SAME_SITE_VALUES.includes(params.sameSite)) {
+      throw new Error('Expected params.sameSite to be a Strict || Lax || None');
     }
   }
 
@@ -127,6 +135,7 @@ export class Authenticator {
       expires: new Date(Date.now() + this._cookieExpirationDays * 864e+5),
       secure: true,
       httpOnly: this._httpOnly,
+      sameSite: this._sameSite,
     };
     const cookies = [
       Cookies.serialize(`${usernameBase}.accessToken`, tokens.access_token, cookieAttributes),
