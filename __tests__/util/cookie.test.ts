@@ -1,4 +1,4 @@
-import { CookieAttributes, Cookies } from '../../src/util/cookie';
+import { CookieAttributes, Cookies, SAME_SITE_VALUES } from '../../src/util/cookie';
 
 describe('parse tests', () => {
   test('should parse valid cookie string', () => {
@@ -95,5 +95,10 @@ describe('serialize tests', () => {
 
     expect(Cookies.parse(serialized))
       .toStrictEqual([{ name, value }]);
+  });
+
+  test('should have correct SAME_SITE_VALUES', () => {
+    expect(SAME_SITE_VALUES).toHaveLength(3);
+    expect(SAME_SITE_VALUES).toEqual(['Strict', 'Lax', 'None']);
   });
 });

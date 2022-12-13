@@ -5,6 +5,7 @@ export interface Cookie {
 }
 
 export type SameSite = 'Strict' | 'Lax' | 'None';
+export const SAME_SITE_VALUES: SameSite[] = ['Strict', 'Lax', 'None'];
 
 /**
  * Cookie attributes to be used inside 'Set-Cookie' header
@@ -31,7 +32,7 @@ export interface CookieAttributes {
 
     /**
      * The SameSite attribute allows you to declare if your cookie should be restricted to a first-party or same-site context.
-     * Refer to {@link https://httpwg.org/http-extensions/draft-ietf-httpbis-rfc6265bis.html#name-samesite-cookiesRFC 6265 section 4.1.2.7.} for more details.
+     * Refer to {@link https://httpwg.org/http-extensions/draft-ietf-httpbis-rfc6265bis.html#name-samesite-cookies RFC 6265 section 8.8.} for more details.
      */
     sameSite?: SameSite;
 

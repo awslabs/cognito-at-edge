@@ -3,7 +3,7 @@ import { parse, stringify } from 'querystring';
 import pino from 'pino';
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { CloudFrontRequestEvent, CloudFrontRequestResult } from 'aws-lambda';
-import { CookieAttributes, Cookies, SameSite } from './util/cookie';
+import { CookieAttributes, Cookies, SameSite, SAME_SITE_VALUES } from './util/cookie';
 
 
 
@@ -29,7 +29,7 @@ export class Authenticator {
   _cookieExpirationDays: number;
   _disableCookieDomain: boolean;
   _httpOnly: boolean;
-  _sameSite: SameSite;
+  _sameSite?: SameSite;
   _cookieBase: string;
   _logger;
   _jwtVerifier;
@@ -80,7 +80,7 @@ export class Authenticator {
     if ('httpOnly' in params && typeof params.httpOnly !== 'boolean') {
       throw new Error('Expected params.httpOnly to be a boolean');
     }
-    if ('sameSite' in params && !['Strict', 'Lax', 'None'].includes(params.sameSite)) {
+    if ('sameSite' in params && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
     }
   }
