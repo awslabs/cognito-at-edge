@@ -1,20 +1,33 @@
 # Changelog
 
+## [1.3.2](https://github.com/awslabs/cognito-at-edge/tree/1.3.2) (2023-02-17)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.3.1...1.3.2)
+
+**Added:**
+
+- Support SameSite cookie [\#50](https://github.com/awslabs/cognito-at-edge/pull/50) ([ckifer](https://github.com/ckifer))
+
+**Fixed:**
+
+- Unhandled error if cookies disabled [\#52](https://github.com/awslabs/cognito-at-edge/issues/52)
+- Handle missing cookies in request [\#53](https://github.com/awslabs/cognito-at-edge/pull/53) ([foxbox-doug](https://github.com/foxbox-doug))
+
 ## [1.3.1](https://github.com/awslabs/cognito-at-edge/tree/1.3.1) (2022-12-05)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.3.0...1.3.1)
 
 **Fixed:**
 
-- Encode illegal characters inside cookies and change cookies parsing logic [\#46](https://github.com/awslabs/cognito-at-edge/pull/46) ([borisfba](https://github.com/borisfba))
+- Incorrect Regex of idToken With Subdomains [\#43](https://github.com/awslabs/cognito-at-edge/issues/43)
 
-## [1.3.0](https://github.com/awslabs/cognito-at-edge/tree/1.3.0) (2022-11-21)
+## [1.3.0](https://github.com/awslabs/cognito-at-edge/tree/1.3.0) (2022-11-22)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.2.2...1.3.0)
 
 **Added:**
 
-- Add support for HttpOnly cookie flag [\#41](https://github.com/awslabs/cognito-at-edge/pull/41) ([tsop14](https://github.com/tsop14))
+- feat: httpOnly param [\#41](https://github.com/awslabs/cognito-at-edge/pull/41) ([tsop14](https://github.com/tsop14))
 
 ## [1.2.2](https://github.com/awslabs/cognito-at-edge/tree/1.2.2) (2022-04-12)
 
