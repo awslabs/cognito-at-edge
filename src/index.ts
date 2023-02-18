@@ -18,6 +18,8 @@ interface AuthenticatorParams {
   httpOnly?: boolean;
   sameSite?: SameSite;
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+  idpIdentifier? : string;
+  scope?: string;
 }
 
 export class Authenticator {
@@ -33,6 +35,8 @@ export class Authenticator {
   _cookieBase: string;
   _logger;
   _jwtVerifier;
+  _idpIdentifier? : string;
+  _scope?: string;
 
   constructor(params: AuthenticatorParams) {
     this._verifyParams(params);
@@ -55,6 +59,8 @@ export class Authenticator {
       clientId: params.userPoolAppId,
       tokenUse: 'id',
     });
+    this._scope=params.scope;
+    this._idpIdentifier=params.idpIdentifier;
   }
 
   /**
@@ -82,6 +88,12 @@ export class Authenticator {
     }
     if ('sameSite' in params && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
+    }
+    if ('idpIdentifier' in params && !('scope' in params)) {
+      throw new Error('Expected params.scope must be set if params.idpIdentifier is set');
+    }
+    if ('scope' in params && !('idpIdentifier' in params)) {
+      throw new Error('Expected params.idpIdentifier must be set if params.scope is set');
     }
   }
 
@@ -229,7 +241,11 @@ export class Authenticator {
         if (request.querystring && request.querystring !== '') {
           redirectPath += encodeURIComponent('?' + request.querystring);
         }
-        const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${redirectPath}`;
+        let federatedParams='';
+        if(this._idpIdentifier!==undefined && this._scope!==undefined){
+          federatedParams=`&identity_provider=${this._idpIdentifier}&scope=${this._scope}`;
+        }
+        const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${redirectPath}${federatedParams}`;
         this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
         return {
           status: '302',
