@@ -17,6 +17,7 @@ interface AuthenticatorParams {
   disableCookieDomain?: boolean;
   httpOnly?: boolean;
   sameSite?: SameSite;
+  enableLogout?: boolean;
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
 }
 
@@ -30,6 +31,7 @@ export class Authenticator {
   _disableCookieDomain: boolean;
   _httpOnly: boolean;
   _sameSite?: SameSite;
+  _enableLogout?: boolean;
   _cookieBase: string;
   _logger;
   _jwtVerifier;
@@ -44,6 +46,7 @@ export class Authenticator {
     this._cookieExpirationDays = params.cookieExpirationDays || 365;
     this._disableCookieDomain = ('disableCookieDomain' in params && params.disableCookieDomain === true);
     this._httpOnly = ('httpOnly' in params && params.httpOnly === true);
+    this._enableLogout = params.enableLogout || false;
     this._sameSite = params.sameSite;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._logger = pino({
@@ -79,6 +82,9 @@ export class Authenticator {
     }
     if ('httpOnly' in params && typeof params.httpOnly !== 'boolean') {
       throw new Error('Expected params.httpOnly to be a boolean');
+    }
+    if ('enableLogout' in params && typeof params.enableLogout !== 'boolean') {
+      throw new Error('Expected params.enableLogout to be a boolean');
     }
     if ('sameSite' in params && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
@@ -120,19 +126,19 @@ export class Authenticator {
   }
 
   /**
-   * Create a Lambda@Edge redirection response to set the tokens on the user's browser cookies.
+   * Create a Lambda@Edge redirection response to set the tokens on the user's browser cookies, or expire cookies on logout.
    * @param  {Object} tokens   Cognito User Pool tokens.
    * @param  {String} domain   Website domain.
    * @param  {String} location Path to redirection.
    * @return {Object} Lambda@Edge response.
    */
-  async _getRedirectResponse(tokens, domain, location) {
+  async _getRedirectResponse(tokens, domain, location, expireCookies) {
     const decoded = await this._jwtVerifier.verify(tokens.id_token);
     const username = decoded['cognito:username'];
     const usernameBase = `${this._cookieBase}.${username}`;
     const cookieAttributes: CookieAttributes = {
       domain: this._disableCookieDomain ? undefined : domain,
-      expires: new Date(Date.now() + this._cookieExpirationDays * 864e+5),
+      expires: expireCookies ? new Date(0) : new Date(Date.now() + this._cookieExpirationDays * 864e+5),
       secure: true,
       httpOnly: this._httpOnly,
       sameSite: this._sameSite,
@@ -199,6 +205,7 @@ export class Authenticator {
 
   /**
    * Handle Lambda@Edge event:
+   *   * if requested /logout, expire cookies and forward to logout endpoint
    *   * if authentication cookie is present and valid: forward the request
    *   * if ?code=<grant code> is present: set cookies with new tokens
    *   * else redirect to the Cognito UserPool to authenticate the user
@@ -214,6 +221,24 @@ export class Authenticator {
     const redirectURI = `https://${cfDomain}`;
 
     try {
+      if (this._enableLogout && request.uri === "/logout") {
+        this._logger.debug({ msg: 'Logging out', event});
+        
+        const tokens = {
+          access_token: "0",
+          refresh_token: "0",
+          id_token: this._getIdTokenFromCookie(request.headers.cookie)
+        };
+
+        const expireCookies = true;
+        const logoutUrl = `https://${this._userPoolDomain}/logout?logout_uri=${redirectURI}&client_id=${this._userPoolAppId}`;
+        return this._getRedirectResponse(tokens, cfDomain, logoutUrl, expireCookies);
+      }
+    } catch(err) {
+      this._logger.error({ msg: 'Failed to logout', err});
+    }
+
+    try {
       const token = this._getIdTokenFromCookie(request.headers.cookie);
       this._logger.debug({ msg: 'Verifying token...', token });
       const user = await this._jwtVerifier.verify(token);
@@ -222,8 +247,9 @@ export class Authenticator {
     } catch (err) {
       this._logger.debug("User isn't authenticated: %s", err);
       if (requestParams.code) {
+        const expireCookies = false;
         return this._fetchTokensFromCode(redirectURI, requestParams.code)
-          .then(tokens => this._getRedirectResponse(tokens, cfDomain, requestParams.state));
+          .then(tokens => this._getRedirectResponse(tokens, cfDomain, requestParams.state, expireCookies));
       } else {
         let redirectPath = request.uri;
         if (request.querystring && request.querystring !== '') {

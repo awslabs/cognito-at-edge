@@ -48,10 +48,11 @@ describe('private functions', () => {
     const username = 'toto';
     const domain = 'example.com';
     const path = '/test';
+    const expire = true;
     jest.spyOn(authenticator._jwtVerifier, 'verify');
     authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
 
-    const response = await authenticator._getRedirectResponse(tokenData, domain, path);
+    const response = await authenticator._getRedirectResponse(tokenData, domain, path, expire);
     expect(response).toMatchObject({
       status: '302',
       headers: {
@@ -86,10 +87,11 @@ describe('private functions', () => {
     const username = 'toto';
     const domain = 'example.com';
     const path = '/test';
+    const expire = true;
     jest.spyOn(authenticatorWithNoCookieDomain._jwtVerifier, 'verify');
     authenticatorWithNoCookieDomain._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
 
-    const response = await authenticatorWithNoCookieDomain._getRedirectResponse(tokenData, domain, path);
+    const response = await authenticatorWithNoCookieDomain._getRedirectResponse(tokenData, domain, path, expire);
     expect(response).toMatchObject({
       status: '302',
       headers: {
@@ -125,10 +127,11 @@ describe('private functions', () => {
     const username = 'toto';
     const domain = 'example.com';
     const path = '/test';
+    const expire = true;
     jest.spyOn(authenticatorWithHttpOnly._jwtVerifier, 'verify');
     authenticatorWithHttpOnly._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
 
-    const response = await authenticatorWithHttpOnly._getRedirectResponse(tokenData, domain, path);
+    const response = await authenticatorWithHttpOnly._getRedirectResponse(tokenData, domain, path, expire);
     expect(response).toMatchObject({
       status: '302',
       headers: {
@@ -165,10 +168,11 @@ describe('private functions', () => {
     const username = 'toto';
     const domain = 'example.com';
     const path = '/test';
+    const expire = true;
     jest.spyOn(authenticatorWithSameSite._jwtVerifier, 'verify');
     authenticatorWithSameSite._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
 
-    const response = await authenticatorWithSameSite._getRedirectResponse(tokenData, domain, path);
+    const response = await authenticatorWithSameSite._getRedirectResponse(tokenData, domain, path, expire);
     expect(response).toMatchObject({
       status: '302',
       headers: {
@@ -234,6 +238,7 @@ describe('createAuthenticator', () => {
       cookieExpirationDays: 365,
       disableCookieDomain: true,
       httpOnly: false,
+      enableLogout: true
     };
   });
 
@@ -253,6 +258,11 @@ describe('createAuthenticator', () => {
 
   test('should create authenticator without httpOnly', () => {
     delete params.httpOnly;
+    expect(typeof new Authenticator(params)).toBe('object');
+  });
+
+  test('should create authenticator without enableLogout', () => {
+    delete params.enableLogout;
     expect(typeof new Authenticator(params)).toBe('object');
   });
 
@@ -322,6 +332,11 @@ describe('createAuthenticator', () => {
     params.httpOnly = '123';
     expect(() => new Authenticator(params)).toThrow('httpOnly');
   });
+
+  test('should fail when creating authenticator with invalid enableLogout', () => {
+    params.enableLogout = '123';
+    expect(() => new Authenticator(params)).toThrow('enableLogout');
+  });
 });
 
 describe('handle', () => {
@@ -334,6 +349,7 @@ describe('handle', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
+      enableLogout: true,
       logLevel: 'debug',
     });
     authenticator._jwtVerifier.cacheJwks(jwksData);
@@ -362,10 +378,11 @@ describe('handle', () => {
       .then(() => {
         expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
         expect(authenticator._fetchTokensFromCode).toHaveBeenCalled();
-        expect(authenticator._getRedirectResponse).toHaveBeenCalledWith(tokenData, 'd111111abcdef8.cloudfront.net', '/lol');
+        expect(authenticator._getRedirectResponse).toHaveBeenCalledWith(tokenData, 'd111111abcdef8.cloudfront.net', '/lol', false);
       });
   });
 
+   
   test('should redirect to auth domain if unauthenticated and no code', () => {
     authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error();});
     return expect(authenticator.handle(getCloudfrontRequest())).resolves.toEqual(
