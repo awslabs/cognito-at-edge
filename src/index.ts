@@ -236,6 +236,23 @@ export class Authenticator {
       }
     } catch(err) {
       this._logger.error({ msg: 'Failed to logout', err});
+      return {
+        status: '302',
+        headers: {
+          'location': [{
+            key: 'Location',
+            value: request.headers.host[0].value,
+          }],
+          'cache-control': [{
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, max-age=0, must-revalidate',
+          }],
+          'pragma': [{
+            key: 'Pragma',
+            value: 'no-cache',
+          }],
+        },
+      };
     }
 
     try {
