@@ -56,10 +56,11 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
   * `userPoolAppId` *string* Cognito UserPool Application ID (eg: `63gcbm2jmskokurt5ku9fhejc6`)
   * `userPoolAppSecret` *string* (Optional) Cognito UserPool Application Secret (eg: `oh470px2i0uvy4i2ha6sju0vxe4ata9ol3m63ufhs2t8yytwjn7p`)
   * `userPoolDomain` *string* Cognito UserPool domain (eg: `your-domain.auth.us-east-1.amazoncognito.com`)
-  * `cookieExpirationDays` *number* (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`)
+  * `cookieExpirationDays` *number* (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`). It's recommended to set this value to match `refreshTokenValidity` parameter of the pool client.
   * `disableCookieDomain` *boolean* (Optional) Sets domain attribute in cookies, defaults to false (eg: `false`)
   * `httpOnly` *boolean* (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
   * `sameSite` *Strict | Lax | None* (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
+  * `cookiePath` *string* (Optional) Sets Path attribute in cookies
   * `logLevel` *string* (Optional) Logging level. Default: `'silent'`. One of `'fatal'`, `'error'`, `'warn'`, `'info'`, `'debug'`, `'trace'` or `'silent'`.
 
 *This is the class constructor.*

@@ -52,6 +52,7 @@ export class Authenticator {
     this._httpOnly = ('httpOnly' in params && params.httpOnly === true);
     this._sameSite = params.sameSite;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
+    this._cookiePath = params.cookiePath;
     this._logger = pino({
       level: params.logLevel || 'silent', // Default to silent
       base: null, //Remove pid, hostname and name logging as not usefull for Lambda
@@ -61,7 +62,6 @@ export class Authenticator {
       clientId: params.userPoolAppId,
       tokenUse: 'id',
     });
-    this._cookiePath = params.cookiePath;
   }
 
   /**
@@ -89,6 +89,9 @@ export class Authenticator {
     }
     if ('sameSite' in params && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
+    }
+    if ('cookiePath' in params && typeof params.cookiePath !== 'string') {
+      throw new Error('Expected params.cookiePath to be a string');
     }
   }
 
@@ -131,6 +134,43 @@ export class Authenticator {
   }
 
   /**
+   * Fetch accessTokens from refreshToken.
+   * @param  {String} redirectURI Redirection URI.
+   * @param  {String} refreshToken Refresh token.
+   * @return {Promise<Tokens>} Refreshed user tokens.
+   */
+  _fetchTokensFromRefreshToken(redirectURI: string, refreshToken: string): Promise<Tokens> {
+    const authorization = this._userPoolAppSecret && Buffer.from(`${this._userPoolAppId}:${this._userPoolAppSecret}`).toString('base64');
+    const request = {
+      url: `https://${this._userPoolDomain}/oauth2/token`,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...(authorization && {'Authorization': `Basic ${authorization}`}),
+      },
+      data: stringify({
+        client_id: this._userPoolAppId,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+        redirect_uri: redirectURI,
+      }),
+    } as const;
+    this._logger.debug({ msg: 'Fetching tokens from refreshToken...', request, refreshToken });
+    return axios.request(request)
+      .then(resp => {
+        this._logger.debug({ msg: 'Fetched tokens', tokens: resp.data });
+        return {
+          idToken: resp.data.id_token,
+          accessToken: resp.data.access_token,
+        };
+      })
+      .catch(err => {
+        this._logger.error({ msg: 'Unable to fetch tokens from refreshToken', request, refreshToken });
+        throw err;
+      });
+  }
+
+  /**
    * Create a Lambda@Edge redirection response to set the tokens on the user's browser cookies.
    * @param  {Object} tokens   Cognito User Pool tokens.
    * @param  {String} domain   Website domain.
@@ -147,7 +187,7 @@ export class Authenticator {
       secure: true,
       httpOnly: this._httpOnly,
       sameSite: this._sameSite,
-      ... (this._cookiePath ? {path: this._cookiePath}: {}),
+      path: this._cookiePath,
     };
     const cookies = [
       Cookies.serialize(`${usernameBase}.accessToken`, tokens.accessToken, cookieAttributes),
@@ -217,42 +257,6 @@ export class Authenticator {
 
     this._logger.debug({ msg: 'Found tokens in cookie', tokens });
     return tokens;
-  }
-  /**
-   * Fetch accessTokens from refreshToken.
-   * @param  {String} redirectURI Redirection URI.
-   * @param  {String} refreshToken Refresh token.
-   * @return {Promise<Tokens>} Refreshed user tokens.
-   */
-  _fetchTokensFromRefreshToken(redirectURI: string, refreshToken: string): Promise<Tokens> {
-    const authorization = this._userPoolAppSecret && Buffer.from(`${this._userPoolAppId}:${this._userPoolAppSecret}`).toString('base64');
-    const request = {
-      url: `https://${this._userPoolDomain}/oauth2/token`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        ...(authorization && {'Authorization': `Basic ${authorization}`}),
-      },
-      data: stringify({
-        client_id:	this._userPoolAppId,
-        refresh_token:	refreshToken,
-        grant_type:	'refresh_token',
-        redirect_uri:	redirectURI,
-      }),
-    } as const;
-    this._logger.debug({ msg: 'Fetching tokens from refreshToken...', request, refreshToken });
-    return axios.request(request)
-      .then(resp => {
-        this._logger.debug({ msg: 'Fetched tokens', tokens: resp.data });
-        return {
-          idToken: resp.data.id_token,
-          accessToken: resp.data.access_token,
-        };
-      })
-      .catch(err => {
-        this._logger.error({ msg: 'Unable to fetch tokens from refreshToken', request, refreshToken });
-        throw err;
-      });
   }
 
   /**
