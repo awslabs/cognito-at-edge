@@ -1,6 +1,14 @@
 # Changelog
 
-## [1.3.2](https://github.com/awslabs/cognito-at-edge/tree/1.3.2) (2023-02-17)
+## [1.4.0](https://github.com/awslabs/cognito-at-edge/tree/1.4.0) (2023-04-18)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.3.2...1.4.0)
+
+**Added:**
+
+- Use refetch token, if available [\#51](https://github.com/awslabs/cognito-at-edge/pull/51) ([maverick089](https://github.com/maverick089))
+
+## [1.3.2](https://github.com/awslabs/cognito-at-edge/tree/1.3.2) (2023-02-20)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.3.1...1.3.2)
 
