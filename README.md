@@ -61,6 +61,20 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
   * `httpOnly` *boolean* (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
   * `sameSite` *Strict | Lax | None* (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
   * `cookiePath` *string* (Optional) Sets Path attribute in cookies
+  * `cookieDomain` *string* (Optional) Sets the domain name used for the token cookies
+  * `cookieSettingsOverrides` *object* (Optional) Cookie settings overrides for different token cookies -- idToken, accessToken and refreshToken
+    * `idToken` *CookieSettings* (Optional) Setting overrides to use for idToken
+      * `expirationDays` *number* (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`). It's recommended to set this value to match `refreshTokenValidity` parameter of the pool client.
+      * `path` *string* (Optional) Sets Path attribute in cookies
+      * `httpOnly` *boolean* (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
+      * `sameSite` *Strict | Lax | None* (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
+    * `accessToken` *CookieSettings* (Optional) Setting overrides to use for accessToken
+    * `refreshToken` *CookieSettings* (Optional) Setting overrides to use for refreshToken
+  * `logoutConfiguration` *object* (Optional) Enables logout functionality
+    * `logoutUri` *string* URI path, which when matched with request, logs user out by revoking tokens and clearing cookies
+  * `parseAuthPath` *string* (Optional) URI path to use for the parse auth handler, when the library is used in an authentication gateway setup
+  * `csrfProtection` *object* (Optional) Enables CSRF protection
+    * `nonceSigningSecret` *string* Secret used for signing nonce cookies
   * `logLevel` *string* (Optional) Logging level. Default: `'silent'`. One of `'fatal'`, `'error'`, `'warn'`, `'info'`, `'debug'`, `'trace'` or `'silent'`.
 
 *This is the class constructor.*
@@ -72,10 +86,28 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
 
 Use it as your Lambda Handler. It will authenticate each query.
 
-```
+```js
 const authenticator = new Authenticator( ... );
 exports.handler = async (request) => authenticator.handle(request);
 ```
+
+### Authentication Gateway Setup
+This library can also be used in an authentication gateway setup. If you have a frontend client application that uses AWS Cognito for authentication, it fetches and stores authentication tokens in the browser. Depending on where the tokens are stored in the browser (localStorage, cookies, sessionStorage), they may susceptible to token theft. In order to mitigate this risk, a set of Lambda@Edge handlers can be deployed that act as an authentication gateway intermediary between frontend and Cognito, whose job is to fetch and store tokens in HttpOnly cookies.
+
+Handlers
+1. `handleSignIn` (Can be mapped to `/signIn` in Cloudfront setup): Redirect users to Cognito's authorize endpoint after replacing redirect uri with its own -- for instance, `/parseAuth`.
+1. `handleParseAuth` (Can be mapped to `/parseAuth`): Exchange Cognito's OAuth code for tokens. Store tokens in browser as HttpOnly cookies
+1. `handleRefreshToken` (Can be mapped to `/refreshToken`): Refresh idToken and accessToken using refreshToken
+1. `handleSignOut` (Can be mapped to `/signOut`): Revoke tokens, clear cookies and redirect user to the URL supplied
+
+```js
+// signIn Lambda Handler
+const authenticator = new Authenticator( ... );
+exports.handler = async (request) => authenticator.handleSignIn(request);
+
+// Similar setup for parseAuth, refreshToken and signOut handlers
+```
+
 
 ### Getting Help
 
