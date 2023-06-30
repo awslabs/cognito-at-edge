@@ -72,6 +72,7 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
     * `refreshToken` *CookieSettings* (Optional) Setting overrides to use for refreshToken
   * `logoutConfiguration` *object* (Optional) Enables logout functionality
     * `logoutUri` *string* URI path, which when matched with request, logs user out by revoking tokens and clearing cookies
+    * `logoutRedirectUri` *string* The URI to which the user is redirected to after logging them out
   * `parseAuthPath` *string* (Optional) URI path to use for the parse auth handler, when the library is used in an authentication gateway setup
   * `csrfProtection` *object* (Optional) Enables CSRF protection
     * `nonceSigningSecret` *string* Secret used for signing nonce cookies
@@ -92,7 +93,7 @@ exports.handler = async (request) => authenticator.handle(request);
 ```
 
 ### Authentication Gateway Setup
-This library can also be used in an authentication gateway setup. If you have a frontend client application that uses AWS Cognito for authentication, it fetches and stores authentication tokens in the browser. Depending on where the tokens are stored in the browser (localStorage, cookies, sessionStorage), they may susceptible to token theft. In order to mitigate this risk, a set of Lambda@Edge handlers can be deployed that act as an authentication gateway intermediary between frontend and Cognito, whose job is to fetch and store tokens in HttpOnly cookies.
+This library can also be used in an authentication gateway setup. If you have a frontend client application that uses AWS Cognito for authentication, it fetches and stores authentication tokens in the browser. Depending on where the tokens are stored in the browser (localStorage, cookies, sessionStorage), they may susceptible to token theft and XSS (Cross-Site Scripting). In order to mitigate this risk, a set of Lambda@Edge handlers can be deployed on a CloudFront distribution which act as an authentication gateway intermediary between the frontend app and Cognito. These handlers will authenticate and fetch tokens on the frontend's behalf and set them as [Secure; HttpOnly](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#restrict_access_to_cookies) tokens inside the browser, thereby restricting access to other scripts in the app.
 
 Handlers
 1. `handleSignIn` (Can be mapped to `/signIn` in Cloudfront setup): Redirect users to Cognito's authorize endpoint after replacing redirect uri with its own -- for instance, `/parseAuth`.

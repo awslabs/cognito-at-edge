@@ -477,6 +477,41 @@ describe('private functions', () => {
       expect(response.headers['set-cookie']).toBeDefined();
       expect(response.headers['set-cookie'].length).toBe(numCookiesToBeCleared);
     });
+
+    it('should clear cookies and redirect to logoutRedirectUri', async () => {
+      jest.spyOn(authenticator._jwtVerifier, 'verify');
+      authenticator._logoutConfiguration = {
+        logoutUri: '/logout',
+        logoutRedirectUri: 'https://foobar.com',
+      };
+      authenticator._jwtVerifier.cacheJwks(jwksData);
+      authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({}));
+      const tokens = {idToken: tokenData.id_token, refreshToken: tokenData.refresh_token};
+      const response = await (authenticator as any)._clearCookies(getCloudfrontRequest(), tokens);
+      expect(response).toEqual(expect.objectContaining({ status: '302' }));
+      expect(response.headers['location']?.[0]?.value).toEqual('https://foobar.com');
+    });
+
+    it('should clear cookies and redirect to redirect_uri query param', async () => {
+      jest.spyOn(authenticator._jwtVerifier, 'verify');
+      authenticator._jwtVerifier.cacheJwks(jwksData);
+      authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({}));
+      const request = getCloudfrontRequest();
+      request.Records[0].cf.request.querystring = 'redirect_uri=https://foobar.com';
+      const response = await (authenticator as any)._clearCookies(request);
+      expect(response).toEqual(expect.objectContaining({ status: '302' }));
+      expect(response.headers['location']?.[0]?.value).toEqual('https://foobar.com');
+    });
+
+    it('should clear cookies and redirect to cf domain', async () => {
+      jest.spyOn(authenticator._jwtVerifier, 'verify');
+      authenticator._jwtVerifier.cacheJwks(jwksData);
+      authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({}));
+      const request = getCloudfrontRequest();
+      const response = await (authenticator as any)._clearCookies(request);
+      expect(response).toEqual(expect.objectContaining({ status: '302' }));
+      expect(response.headers['location']?.[0]?.value).toEqual('https://d111111abcdef8.cloudfront.net');
+    });
   });
 
 });
@@ -679,6 +714,26 @@ describe('handle', () => {
     authenticator._getRedirectResponse.mockReturnValueOnce({ response: 'toto' });
     const request = getCloudfrontRequest();
     request.Records[0].cf.request.querystring = 'code=54fe5f4e&state=/lol';
+    return expect(authenticator.handle(request)).resolves.toEqual({ response: 'toto' })
+      .then(() => {
+        expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
+        expect(authenticator._fetchTokensFromCode).toHaveBeenCalled();
+        expect(authenticator._getRedirectResponse).toHaveBeenCalledWith(tokenData, 'd111111abcdef8.cloudfront.net', '/lol');
+      });
+  });
+
+  test('should fetch and set token if code is present and when csrfProtection is enabled', () => {
+    authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error(); });
+    authenticator._fetchTokensFromCode.mockResolvedValueOnce(tokenData);
+    authenticator._getRedirectResponse.mockReturnValueOnce({ response: 'toto' });
+    authenticator._csrfProtection = {
+      nonceSigningSecret: 'foobar',
+    };
+    const encodedState = Buffer.from(
+      JSON.stringify({ redirect_uri: '/lol' })
+    ).toString('base64');
+    const request = getCloudfrontRequest();
+    request.Records[0].cf.request.querystring = `code=54fe5f4e&state=${encodedState}`;
     return expect(authenticator.handle(request)).resolves.toEqual({ response: 'toto' })
       .then(() => {
         expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();

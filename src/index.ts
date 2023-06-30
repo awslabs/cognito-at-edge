@@ -29,6 +29,7 @@ interface AuthenticatorParams {
 
 interface LogoutConfiguration {
   logoutUri: string;
+  logoutRedirectUri: string;
 }
 
 interface Tokens {
@@ -397,6 +398,25 @@ export class Authenticator {
     return csrfTokens;
   }
 
+  /**
+   * Extracts the redirect uri from the state param. When CSRF protection is
+   * enabled, redirect uri is encoded inside state along with other data. So, it
+   * needs to be base64 decoded. When CSRF is not enabled, state can be used
+   * directly.
+   * @param {string} state
+   * @returns {string}
+   */
+  _getRedirectUriFromState(state: string): string {
+    if (this._csrfProtection) {
+      const parsedState = JSON.parse(
+        Buffer.from(urlSafe.parse(state), 'base64').toString()
+      );
+      this._logger.debug({ msg: 'Parsed state param to extract redirect uri', parsedState });
+      return parsedState.redirect_uri;
+    }
+    return state;
+  }
+
   async _revokeTokens(tokens: Tokens) {
     const authorization = this._getAuthorization();
     const revokeRequest = {
@@ -427,7 +447,9 @@ export class Authenticator {
     const { request } = event.Records[0].cf;
     const cfDomain = request.headers.host[0].value;
     const requestParams = parse(request.querystring);
-    const redirectURI = requestParams.redirect_uri as string;
+    const redirectURI = this._logoutConfiguration?.logoutRedirectUri ||
+      requestParams.redirect_uri as string ||
+      `https://${cfDomain}`;
 
     const cookieDomain = getCookieDomain(cfDomain, this._disableCookieDomain, this._cookieDomain);
     const cookieAttributes: CookieAttributes = {
@@ -576,7 +598,6 @@ export class Authenticator {
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
-      this._logger.debug({ msg: 'Verifying token...', tokens });
       if (this._logoutConfiguration && request.uri.startsWith(this._logoutConfiguration.logoutUri)) {
         this._logger.info({ msg: 'Revoking tokens', tokens });
         await this._revokeTokens(tokens);
@@ -585,6 +606,7 @@ export class Authenticator {
         return this._clearCookies(event, tokens);
       }
       try {
+        this._logger.debug({ msg: 'Verifying token...', tokens });
         const user = await this._jwtVerifier.verify(tokens.idToken);
         this._logger.info({ msg: 'Forwarding request', path: request.uri, user });
         return request;
@@ -606,7 +628,7 @@ export class Authenticator {
       }
       if (requestParams.code) {
         return this._fetchTokensFromCode(redirectURI, requestParams.code)
-          .then(tokens => this._getRedirectResponse(tokens, cfDomain, requestParams.state as string));
+          .then(tokens => this._getRedirectResponse(tokens, cfDomain, this._getRedirectUriFromState(requestParams.state as string)));
       } else {
         return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
       }
@@ -626,7 +648,8 @@ export class Authenticator {
 
     const { request } = event.Records[0].cf;
     const requestParams = parse(request.querystring);
-    const redirectURI = requestParams.redirect_uri as string;
+    const cfDomain = request.headers.host[0].value;
+    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}`;
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
@@ -678,13 +701,9 @@ export class Authenticator {
           this._validateCSRFCookies(request);
         }
         const tokens = await this._fetchTokensFromCode(redirectURI, requestParams.code);
+        const location = this._getRedirectUriFromState(requestParams.state as string);
 
-        const parsedState = JSON.parse(
-          Buffer.from(urlSafe.parse(requestParams.state), 'base64').toString()
-        );
-        this._logger.debug({msg: 'Parsed state param...', parsedState});
-
-        return this._getRedirectResponse(tokens, cfDomain, parsedState.redirect_uri);
+        return this._getRedirectResponse(tokens, cfDomain, location);
       } else {
         this._logger.debug({msg: 'Code param not found', requestParams});
         throw new Error('OAuth code parameter not found');
@@ -713,7 +732,7 @@ export class Authenticator {
     const { request } = event.Records[0].cf;
     const cfDomain = request.headers.host[0].value;
     const requestParams = parse(request.querystring);
-    const redirectURI = requestParams.redirect_uri as string;
+    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}`;
 
     try {
       let tokens = this._getTokensFromCookie(request.headers.cookie);
@@ -747,7 +766,8 @@ export class Authenticator {
 
     const { request } = event.Records[0].cf;
     const requestParams = parse(request.querystring);
-    const redirectURI = requestParams.redirect_uri as string;
+    const cfDomain = request.headers.host[0].value;
+    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}`;
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);

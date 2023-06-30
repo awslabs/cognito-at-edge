@@ -50,7 +50,7 @@ export function generateCSRFTokens(redirectURI: string, signingSecret: string) {
 }
 
 export function getCurrentTimestampInSeconds(): number {
-  return (Date.now() / 1000) | 0;
+  return (Date.now() / 1000) || 0;
 }
 
 export function generateSecret(allowedCharacters: string, secretLength: number) {
