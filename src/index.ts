@@ -621,11 +621,11 @@ export class Authenticator {
         }
       }
     } catch (err) {
-      this._logger.debug("User isn't authenticated: %s", err);
       if (this._logoutConfiguration && request.uri.startsWith(this._logoutConfiguration.logoutUri)) {
         this._logger.info({ msg: 'Clearing cookies', path: redirectURI });
         return this._clearCookies(event);
       }
+      this._logger.debug("User isn't authenticated: %s", err);
       if (requestParams.code) {
         return this._fetchTokensFromCode(redirectURI, requestParams.code)
           .then(tokens => this._getRedirectResponse(tokens, cfDomain, this._getRedirectUriFromState(requestParams.state as string)));
