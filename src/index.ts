@@ -178,7 +178,7 @@ export class Authenticator {
    * @return Lambda@Edge response.
    */
   async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontResultResponse> {
-    const decoded = await this._jwtVerifier.verify(tokens.idToken);
+    const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
     const username = decoded['cognito:username'] as string;
     const usernameBase = `${this._cookieBase}.${username}`;
     const cookieAttributes: CookieAttributes = {
@@ -190,8 +190,8 @@ export class Authenticator {
       path: this._cookiePath,
     };
     const cookies = [
-      Cookies.serialize(`${usernameBase}.accessToken`, tokens.accessToken, cookieAttributes),
-      Cookies.serialize(`${usernameBase}.idToken`, tokens.idToken, cookieAttributes),
+      Cookies.serialize(`${usernameBase}.accessToken`, tokens.accessToken as string, cookieAttributes),
+      Cookies.serialize(`${usernameBase}.idToken`, tokens.idToken as string, cookieAttributes),
       ...(tokens.refreshToken ? [Cookies.serialize(`${usernameBase}.refreshToken`, tokens.refreshToken, cookieAttributes)] : []),
       Cookies.serialize(`${usernameBase}.tokenScopesString`, 'phone email profile openid aws.cognito.signin.user.admin', cookieAttributes),
       Cookies.serialize(`${this._cookieBase}.LastAuthUser`, username, cookieAttributes),
@@ -311,7 +311,7 @@ export class Authenticator {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
       this._logger.debug({ msg: 'Verifying token...', tokens });
       try {
-        const user = await this._jwtVerifier.verify(tokens.idToken);
+        const user = await this._jwtVerifier.verify(tokens.idToken as string);
         this._logger.info({ msg: 'Forwarding request', path: request.uri, user });
         return request;
       } catch (err) {
@@ -326,7 +326,7 @@ export class Authenticator {
     } catch (err) {
       this._logger.debug("User isn't authenticated: %s", err);
       if (requestParams.code) {
-        return this._fetchTokensFromCode(redirectURI, requestParams.code)
+        return this._fetchTokensFromCode(redirectURI, requestParams.code as string)
           .then(tokens => this._getRedirectResponse(tokens, cfDomain, requestParams.state as string));
       } else {
         return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
