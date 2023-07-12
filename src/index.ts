@@ -20,9 +20,9 @@ interface AuthenticatorParams {
 }
 
 interface Tokens {
-  accessToken?: string;
-  idToken?: string;
-  refreshToken?: string;
+    accessToken?: string;
+    idToken?: string;
+    refreshToken?: string;
 }
 
 export class Authenticator {
@@ -69,12 +69,12 @@ export class Authenticator {
    * @param  {object} params constructor params
    * @return {void} throw an exception if params are incorects.
    */
-  _verifyParams(params) {
+  _verifyParams(params: AuthenticatorParams) {
     if (typeof params !== 'object') {
       throw new Error('Expected params to be an object');
     }
     [ 'region', 'userPoolId', 'userPoolAppId', 'userPoolDomain' ].forEach(param => {
-      if (typeof params[param] !== 'string') {
+      if (typeof params[param as keyof AuthenticatorParams] !== 'string') {
         throw new Error(`Expected params.${param} to be a string`);
       }
     });
@@ -87,7 +87,7 @@ export class Authenticator {
     if ('httpOnly' in params && typeof params.httpOnly !== 'boolean') {
       throw new Error('Expected params.httpOnly to be a boolean');
     }
-    if ('sameSite' in params && !SAME_SITE_VALUES.includes(params.sameSite)) {
+    if ('sameSite' in params && params.sameSite !== undefined && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
     }
     if ('cookiePath' in params && typeof params.cookiePath !== 'string') {
