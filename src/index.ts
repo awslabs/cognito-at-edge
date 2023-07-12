@@ -1,5 +1,5 @@
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
-import { CloudFrontRequest, CloudFrontRequestEvent, CloudFrontRequestResult } from 'aws-lambda';
+import type { CloudFrontRequest, CloudFrontRequestEvent, CloudFrontResultResponse } from 'aws-lambda';
 import axios from 'axios';
 import pino from 'pino';
 import { parse, stringify } from 'querystring';
@@ -29,7 +29,7 @@ export class Authenticator {
   _region: string;
   _userPoolId: string;
   _userPoolAppId: string;
-  _userPoolAppSecret: string;
+  _userPoolAppSecret: string | undefined;
   _userPoolDomain: string;
   _cookieExpirationDays: number;
   _disableCookieDomain: boolean;
@@ -101,7 +101,7 @@ export class Authenticator {
    * @param  {String} code        Authorization code.
    * @return {Promise} Authenticated user tokens.
    */
-  _fetchTokensFromCode(redirectURI, code): Promise<Tokens> {
+  _fetchTokensFromCode(redirectURI: string, code: string): Promise<Tokens> {
     const authorization = this._userPoolAppSecret && Buffer.from(`${this._userPoolAppId}:${this._userPoolAppSecret}`).toString('base64');
     const request = {
       url: `https://${this._userPoolDomain}/oauth2/token`,
@@ -177,7 +177,7 @@ export class Authenticator {
    * @param  {String} location Path to redirection.
    * @return Lambda@Edge response.
    */
-  async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontRequestResult> {
+  async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontResultResponse> {
     const decoded = await this._jwtVerifier.verify(tokens.idToken);
     const username = decoded['cognito:username'] as string;
     const usernameBase = `${this._cookieBase}.${username}`;
@@ -197,7 +197,7 @@ export class Authenticator {
       Cookies.serialize(`${this._cookieBase}.LastAuthUser`, username, cookieAttributes),
     ];
 
-    const response: CloudFrontRequestResult = {
+    const response: CloudFrontResultResponse = {
       status: '302' ,
       headers: {
         'location': [{
@@ -265,7 +265,7 @@ export class Authenticator {
    * @param  {string}  redirectURI Redirection URI.
    * @return {CloudFrontRequestResult} Redirect response.
    */
-  _getRedirectToCognitoUserPoolResponse(request: CloudFrontRequest, redirectURI: string): CloudFrontRequestResult {
+  _getRedirectToCognitoUserPoolResponse(request: CloudFrontRequest, redirectURI: string): CloudFrontResultResponse {
     let redirectPath = request.uri;
     if (request.querystring && request.querystring !== '') {
       redirectPath += encodeURIComponent('?' + request.querystring);
@@ -299,7 +299,7 @@ export class Authenticator {
    * @param  {Object}  event Lambda@Edge event.
    * @return {Promise} CloudFront response.
    */
-  async handle(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
+  async handle(event: CloudFrontRequestEvent): Promise<CloudFrontResultResponse | CloudFrontRequest> {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
