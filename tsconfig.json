@@ -3,9 +3,13 @@
     "module": "commonjs",
     "target": "esnext",
     "declaration": true,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "strict": true
   },
   "include": [
     "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
   ]
 }
