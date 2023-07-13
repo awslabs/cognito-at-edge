@@ -5,7 +5,7 @@ import pino from 'pino';
 import { parse, stringify } from 'querystring';
 import { CookieAttributes, Cookies, SameSite, SAME_SITE_VALUES } from './util/cookie';
 
-interface AuthenticatorParams {
+export interface AuthenticatorParams {
   region: string;
   userPoolId: string;
   userPoolAppId: string;
