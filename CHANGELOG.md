@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.5.0](https://github.com/awslabs/cognito-at-edge/tree/1.5.0) (2023-07-21)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.4.0...1.5.0)
+
+**Added:**
+
+- Add additional handlers and CSRF protection [\#68](https://github.com/awslabs/cognito-at-edge/pull/68) ([vikas-reddy](https://github.com/vikas-reddy))
+
+**Merged pull requests:**
+
+- Improve types and type checks [\#71](https://github.com/awslabs/cognito-at-edge/pull/71) ([peternedap](https://github.com/peternedap))
+
 ## [1.4.0](https://github.com/awslabs/cognito-at-edge/tree/1.4.0) (2023-04-18)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.3.2...1.4.0)
