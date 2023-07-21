@@ -1,12 +1,12 @@
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
-import { CloudFrontRequest, CloudFrontRequestEvent, CloudFrontRequestResult } from 'aws-lambda';
+import type { CloudFrontRequest, CloudFrontRequestEvent, CloudFrontResultResponse } from 'aws-lambda';
 import axios from 'axios';
 import pino from 'pino';
 import { parse, stringify } from 'querystring';
 import { CookieAttributes, CookieSettingsOverrides, CookieType, Cookies, SAME_SITE_VALUES, SameSite, getCookieDomain } from './util/cookie';
 import { CSRFTokens, NONCE_COOKIE_NAME_SUFFIX, NONCE_HMAC_COOKIE_NAME_SUFFIX, PKCE_COOKIE_NAME_SUFFIX, generateCSRFTokens, signNonce, urlSafe } from './util/csrf';
 
-interface AuthenticatorParams {
+export interface AuthenticatorParams {
   region: string;
   userPoolId: string;
   userPoolAppId: string;
@@ -42,7 +42,7 @@ export class Authenticator {
   _region: string;
   _userPoolId: string;
   _userPoolAppId: string;
-  _userPoolAppSecret: string;
+  _userPoolAppSecret: string | undefined;
   _userPoolDomain: string;
   _cookieExpirationDays: number;
   _disableCookieDomain: boolean;
@@ -52,7 +52,7 @@ export class Authenticator {
   _cookiePath?: string;
   _cookieDomain?: string;
   _csrfProtection?: {
-    nonceSigningSecret?: string;
+    nonceSigningSecret: string;
   };
   _logoutConfiguration?: LogoutConfiguration;
   _parseAuthPath?: string;
@@ -94,12 +94,12 @@ export class Authenticator {
    * @param  {object} params constructor params
    * @return {void} throw an exception if params are incorects.
    */
-  _verifyParams(params) {
+  _verifyParams(params: AuthenticatorParams) {
     if (typeof params !== 'object') {
       throw new Error('Expected params to be an object');
     }
     [ 'region', 'userPoolId', 'userPoolAppId', 'userPoolDomain' ].forEach(param => {
-      if (typeof params[param] !== 'string') {
+      if (typeof params[param as keyof AuthenticatorParams] !== 'string') {
         throw new Error(`Expected params.${param} to be a string`);
       }
     });
@@ -115,13 +115,13 @@ export class Authenticator {
     if ('httpOnly' in params && typeof params.httpOnly !== 'boolean') {
       throw new Error('Expected params.httpOnly to be a boolean');
     }
-    if ('sameSite' in params && !SAME_SITE_VALUES.includes(params.sameSite)) {
+    if (params.sameSite !== undefined && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
     }
     if ('cookiePath' in params && typeof params.cookiePath !== 'string') {
       throw new Error('Expected params.cookiePath to be a string');
     }
-    if ('logoutConfiguration' in params && !/\/\w+/.test(params.logoutConfiguration.logoutUri)) {
+    if (params.logoutConfiguration && !/\/\w+/.test(params.logoutConfiguration.logoutUri)) {
       throw new Error('Expected params.logoutConfiguration.logoutUri to be a valid non-empty string starting with "/"');
     }
   }
@@ -132,7 +132,7 @@ export class Authenticator {
    * @param  {String} code        Authorization code.
    * @return {Promise} Authenticated user tokens.
    */
-  _fetchTokensFromCode(redirectURI, code): Promise<Tokens> {
+  _fetchTokensFromCode(redirectURI: string, code: string): Promise<Tokens> {
     const authorization = this._getAuthorization();
     const request = {
       url: `https://${this._userPoolDomain}/oauth2/token`,
@@ -201,17 +201,21 @@ export class Authenticator {
       });
   }
 
-  _getAuthorization(): string {
+  _getAuthorization(): string | undefined {
     return this._userPoolAppSecret && Buffer.from(`${this._userPoolAppId}:${this._userPoolAppSecret}`).toString('base64');
   }
 
   _validateCSRFCookies(request: CloudFrontRequest) {
+    if (!this._csrfProtection) {
+      throw new Error('_validateCSRFCookies should not be called if CSRF protection is disabled.');
+    }
+    
     const requestParams = parse(request.querystring);
     const requestCookies = request.headers.cookie?.flatMap(h => Cookies.parse(h.value)) || [];
     this._logger.debug({ msg: 'Validating CSRF Cookies', requestCookies});
 
     const parsedState = JSON.parse(
-      Buffer.from(urlSafe.parse(requestParams.state), 'base64').toString()
+      Buffer.from(urlSafe.parse(requestParams.state as string), 'base64').toString()
     );
 
     const {nonce: originalNonce, nonceHmac, pkce} = this._getCSRFTokensFromCookie(request.headers.cookie);
@@ -230,7 +234,7 @@ export class Authenticator {
       throw new Error('Your browser didn\'t send the pkce cookie along, but it is required for security (prevent CSRF).');
     }
 
-    const calculatedHmac = signNonce(parsedState.nonce, this._csrfProtection?.nonceSigningSecret);
+    const calculatedHmac = signNonce(parsedState.nonce, this._csrfProtection.nonceSigningSecret);
 
     if (calculatedHmac !== nonceHmac) {
       throw new Error(`Nonce signature mismatch! Expected ${calculatedHmac} but got ${nonceHmac}`);
@@ -239,18 +243,19 @@ export class Authenticator {
 
   _getOverridenCookieAttributes(cookieAttributes: CookieAttributes = {}, cookieType: CookieType): CookieAttributes {
     const res = {...cookieAttributes};
-    if (cookieType in this._cookieSettingsOverrides) {
-      const overrides = this._cookieSettingsOverrides[cookieType];
-      if ('httpOnly' in overrides) {
+    
+    const overrides = this._cookieSettingsOverrides?.[cookieType];
+    if (overrides) {
+      if (overrides.httpOnly !== undefined) {
         res.httpOnly = overrides.httpOnly;
       }
-      if ('sameSite' in overrides) {
+      if (overrides.sameSite !== undefined) {
         res.sameSite = overrides.sameSite;
       }
-      if ('path' in overrides) {
+      if (overrides.path !== undefined) {
         res.path = overrides.path;
       }
-      if ('expirationDays' in overrides) {
+      if (overrides.expirationDays !== undefined) {
         res.expires = new Date(Date.now() + overrides.expirationDays * 864e+5);
       }
     }
@@ -270,8 +275,8 @@ export class Authenticator {
    * @param  {String} location Path to redirection.
    * @return Lambda@Edge response.
    */
-  async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontRequestResult> {
-    const decoded = await this._jwtVerifier.verify(tokens.idToken);
+  async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontResultResponse> {
+    const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
     const username = decoded['cognito:username'] as string;
     const usernameBase = `${this._cookieBase}.${username}`;
     const cookieDomain = getCookieDomain(domain, this._disableCookieDomain, this._cookieDomain);
@@ -284,8 +289,8 @@ export class Authenticator {
       path: this._cookiePath,
     };
     const cookies = [
-      Cookies.serialize(`${usernameBase}.accessToken`, tokens.accessToken, this._getOverridenCookieAttributes(cookieAttributes, 'accessToken')),
-      Cookies.serialize(`${usernameBase}.idToken`, tokens.idToken, this._getOverridenCookieAttributes(cookieAttributes, 'idToken')),
+      Cookies.serialize(`${usernameBase}.accessToken`, tokens.accessToken as string, this._getOverridenCookieAttributes(cookieAttributes, 'accessToken')),
+      Cookies.serialize(`${usernameBase}.idToken`, tokens.idToken as string, this._getOverridenCookieAttributes(cookieAttributes, 'idToken')),
       ...(tokens.refreshToken ? [Cookies.serialize(`${usernameBase}.refreshToken`, tokens.refreshToken, this._getOverridenCookieAttributes(cookieAttributes, 'refreshToken'))] : []),
       Cookies.serialize(`${usernameBase}.tokenScopesString`, 'phone email profile openid aws.cognito.signin.user.admin', cookieAttributes),
       Cookies.serialize(`${this._cookieBase}.LastAuthUser`, username, cookieAttributes),
@@ -303,7 +308,7 @@ export class Authenticator {
       );
     }
 
-    const response: CloudFrontRequestResult = {
+    const response: CloudFrontResultResponse = {
       status: '302' ,
       headers: {
         'location': [{
@@ -392,7 +397,7 @@ export class Authenticator {
         });
       }
       return tokens;
-    }, {});
+    }, {} as CSRFTokens);
 
     this._logger.debug({ msg: 'Found CSRF tokens in cookie', csrfTokens });
     return csrfTokens;
@@ -442,7 +447,7 @@ export class Authenticator {
       });
   }
 
-  async _clearCookies(event: CloudFrontRequestEvent, tokens: Tokens = {}): Promise<CloudFrontRequestResult> {
+  async _clearCookies(event: CloudFrontRequestEvent, tokens: Tokens = {}): Promise<CloudFrontResultResponse> {
     this._logger.info({ msg: 'Clearing cookies...', event, tokens });
     const { request } = event.Records[0].cf;
     const cfDomain = request.headers.host[0].value;
@@ -461,9 +466,9 @@ export class Authenticator {
       path: this._cookiePath,
     };
 
-    let responseCookies = [];
+    let responseCookies: string[] = [];
     try {
-      const decoded = await this._jwtVerifier.verify(tokens.idToken);
+      const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
       const username = decoded['cognito:username'] as string;
       this._logger.info({ msg: 'Token verified. Clearing cookies...', idToken: tokens.idToken, username });
 
@@ -490,7 +495,7 @@ export class Authenticator {
       }
     }
 
-    const response: CloudFrontRequestResult = {
+    const response: CloudFrontResultResponse = {
       status: '302' ,
       headers: {
         'location': [{
@@ -518,9 +523,9 @@ export class Authenticator {
    * Get redirect to cognito userpool response
    * @param  {CloudFrontRequest}  request The original request
    * @param  {string}  redirectURI Redirection URI.
-   * @return {CloudFrontRequestResult} Redirect response.
+   * @return {CloudFrontResultResponse} Redirect response.
    */
-  _getRedirectToCognitoUserPoolResponse(request: CloudFrontRequest, redirectURI: string): CloudFrontRequestResult {
+  _getRedirectToCognitoUserPoolResponse(request: CloudFrontRequest, redirectURI: string): CloudFrontResultResponse {
     const cfDomain = request.headers.host[0].value;
     let redirectPath = request.uri;
     if (request.querystring && request.querystring !== '') {
@@ -533,16 +538,33 @@ export class Authenticator {
     }
 
     let csrfTokens: CSRFTokens = {};
-    let state = redirectPath;
+    let state: string | undefined = redirectPath;
     if (this._csrfProtection) {
-      csrfTokens = generateCSRFTokens(redirectURI, this._csrfProtection?.nonceSigningSecret);
+      csrfTokens = generateCSRFTokens(redirectURI, this._csrfProtection.nonceSigningSecret);
       state = csrfTokens.state;
     }
 
     const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${oauthRedirectUri}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
 
     this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
-    const response = {
+  
+    let cookies: string[] | undefined;
+    if (this._csrfProtection) {
+      const cookieAttributes: CookieAttributes = {
+        expires: new Date(Date.now() + 10 * 60 * 1000),
+        secure: true,
+        httpOnly: this._httpOnly,
+        sameSite: this._sameSite,
+        path: this._cookiePath,
+      };
+      cookies = [
+        Cookies.serialize(`${this._cookieBase}.${PKCE_COOKIE_NAME_SUFFIX}`, csrfTokens.pkce || '', cookieAttributes),
+        Cookies.serialize(`${this._cookieBase}.${NONCE_COOKIE_NAME_SUFFIX}`, csrfTokens.nonce || '', cookieAttributes),
+        Cookies.serialize(`${this._cookieBase}.${NONCE_HMAC_COOKIE_NAME_SUFFIX}`, csrfTokens.nonceHmac || '', cookieAttributes),
+      ];
+    }
+
+    const response: CloudFrontResultResponse = {
       status: '302',
       headers: {
         'location': [{
@@ -557,25 +579,12 @@ export class Authenticator {
           key: 'Pragma',
           value: 'no-cache',
         }],
+        ...(cookies
+          ? { 'set-cookie': cookies && cookies.map(c => ({ key: 'Set-Cookie', value: c })) }
+          : {}),
       },
     };
-
-    if (this._csrfProtection) {
-      const cookieAttributes: CookieAttributes = {
-        expires: new Date(Date.now() + 10 * 60 * 1000),
-        secure: true,
-        httpOnly: this._httpOnly,
-        sameSite: this._sameSite,
-        path: this._cookiePath,
-      };
-      const cookies = [
-        Cookies.serialize(`${this._cookieBase}.${PKCE_COOKIE_NAME_SUFFIX}`, csrfTokens.pkce, cookieAttributes),
-        Cookies.serialize(`${this._cookieBase}.${NONCE_COOKIE_NAME_SUFFIX}`, csrfTokens.nonce, cookieAttributes),
-        Cookies.serialize(`${this._cookieBase}.${NONCE_HMAC_COOKIE_NAME_SUFFIX}`, csrfTokens.nonceHmac, cookieAttributes),
-      ];
-      response.headers['set-cookie'] = cookies.map(c => ({ key: 'Set-Cookie', value: c }));
-    }
-
+  
     return response;
   }
 
@@ -588,7 +597,7 @@ export class Authenticator {
    * @param  {Object}  event Lambda@Edge event.
    * @return {Promise} CloudFront response.
    */
-  async handle(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
+  async handle(event: CloudFrontRequestEvent): Promise<CloudFrontResultResponse | CloudFrontRequest> {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
@@ -607,7 +616,7 @@ export class Authenticator {
       }
       try {
         this._logger.debug({ msg: 'Verifying token...', tokens });
-        const user = await this._jwtVerifier.verify(tokens.idToken);
+        const user = await this._jwtVerifier.verify(tokens.idToken as string);
         this._logger.info({ msg: 'Forwarding request', path: request.uri, user });
         return request;
       } catch (err) {
@@ -627,7 +636,7 @@ export class Authenticator {
       }
       this._logger.debug("User isn't authenticated: %s", err);
       if (requestParams.code) {
-        return this._fetchTokensFromCode(redirectURI, requestParams.code)
+        return this._fetchTokensFromCode(redirectURI, requestParams.code as string)
           .then(tokens => this._getRedirectResponse(tokens, cfDomain, this._getRedirectUriFromState(requestParams.state as string)));
       } else {
         return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
@@ -643,7 +652,7 @@ export class Authenticator {
    * @param event Event that triggers this Lambda function
    * @returns Lambda response
    */
-  async handleSignIn(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
+  async handleSignIn(event: CloudFrontRequestEvent): Promise<CloudFrontResultResponse> {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
@@ -655,7 +664,7 @@ export class Authenticator {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
 
       this._logger.debug({ msg: 'Verifying token...', tokens });
-      const user = await this._jwtVerifier.verify(tokens.idToken);
+      const user = await this._jwtVerifier.verify(tokens.idToken as string);
 
       this._logger.info({ msg: 'Redirecting user to', path: redirectURI, user });
       return {
@@ -684,7 +693,7 @@ export class Authenticator {
    * @param event Event that triggers this Lambda function
    * @returns Lambda response
    */
-  async handleParseAuth(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
+  async handleParseAuth(event: CloudFrontRequestEvent): Promise<CloudFrontResultResponse> {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
@@ -700,7 +709,7 @@ export class Authenticator {
         if (this._csrfProtection) {
           this._validateCSRFCookies(request);
         }
-        const tokens = await this._fetchTokensFromCode(redirectURI, requestParams.code);
+        const tokens = await this._fetchTokensFromCode(redirectURI, requestParams.code as string);
         const location = this._getRedirectUriFromState(requestParams.state as string);
 
         return this._getRedirectResponse(tokens, cfDomain, location);
@@ -726,7 +735,7 @@ export class Authenticator {
    * @param event Event that triggers this Lambda function
    * @returns Lambda response
    */
-  async handleRefreshToken(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
+  async handleRefreshToken(event: CloudFrontRequestEvent): Promise<CloudFrontResultResponse> {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
@@ -738,10 +747,10 @@ export class Authenticator {
       let tokens = this._getTokensFromCookie(request.headers.cookie);
 
       this._logger.debug({ msg: 'Verifying token...', tokens });
-      const user = await this._jwtVerifier.verify(tokens.idToken);
+      const user = await this._jwtVerifier.verify(tokens.idToken as string);
 
       this._logger.debug({ msg: 'Refreshing tokens...', tokens, user });
-      tokens = await this._fetchTokensFromRefreshToken(redirectURI, tokens.refreshToken);
+      tokens = await this._fetchTokensFromRefreshToken(redirectURI, tokens.refreshToken as string);
 
       this._logger.debug({ msg: 'Refreshed tokens...', tokens, user });
       return this._getRedirectResponse(tokens, cfDomain, redirectURI);
@@ -761,7 +770,7 @@ export class Authenticator {
    * @param event Event that triggers this Lambda function
    * @returns Lambda response
    */
-  async handleSignOut(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
+  async handleSignOut(event: CloudFrontRequestEvent): Promise<CloudFrontResultResponse> {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;

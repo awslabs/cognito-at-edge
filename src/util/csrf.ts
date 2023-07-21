@@ -8,9 +8,9 @@ export interface CSRFTokens {
   state?: string;
 }
 
-export const NONCE_COOKIE_NAME_SUFFIX = 'nonce';
-export const NONCE_HMAC_COOKIE_NAME_SUFFIX = 'nonceHmac';
-export const PKCE_COOKIE_NAME_SUFFIX = 'pkce';
+export const NONCE_COOKIE_NAME_SUFFIX: keyof CSRFTokens = 'nonce';
+export const NONCE_HMAC_COOKIE_NAME_SUFFIX: keyof CSRFTokens = 'nonceHmac';
+export const PKCE_COOKIE_NAME_SUFFIX: keyof CSRFTokens = 'pkce';
 
 export const CSRF_CONFIG = {
   secretAllowedCharacters:
@@ -86,9 +86,9 @@ export const urlSafe = {
       use this on a string that was previously urlSafe.stringify'ed to return it to
       its prior pure-base64 form. Note that trailing = are not added, but NodeJS does not care
     */
-  stringify: (b64encodedString) =>
+  stringify: (b64encodedString: string) =>
     b64encodedString.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_'),
-  parse: (b64encodedString) =>
+  parse: (b64encodedString: string) =>
     b64encodedString.replace(/-/g, '+').replace(/_/g, '/'),
 };
 

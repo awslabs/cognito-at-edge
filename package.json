@@ -20,7 +20,7 @@
   "dependencies": {
     "aws-jwt-verify": "^2.1.1",
     "axios": "^0.25.0",
-    "pino": "^6.10.0"
+    "pino": "^8.14.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.89",
