@@ -115,7 +115,7 @@ export class Authenticator {
     if ('httpOnly' in params && typeof params.httpOnly !== 'boolean') {
       throw new Error('Expected params.httpOnly to be a boolean');
     }
-    if ('sameSite' in params && params.sameSite !== undefined && !SAME_SITE_VALUES.includes(params.sameSite)) {
+    if (params.sameSite !== undefined && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
     }
     if ('cookiePath' in params && typeof params.cookiePath !== 'string') {
