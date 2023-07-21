@@ -56,6 +56,37 @@ export interface CookieAttributes {
     secure?: boolean;
 }
 
+export type CookieType = 'idToken' | 'accessToken' | 'refreshToken';
+
+export interface CookieSettings {
+  /**
+   * Indicates the maximum lifetime of the cookie.
+   */
+  expirationDays?: number;
+
+  /**
+   * Indicates the path that must exist in the requested URL for the browser to
+   * send the Cookie header.
+   */
+  path?: string;
+
+  /**
+   * Controls whether the cookie can be accessed by JavaScript.
+   */
+  httpOnly?: boolean;
+
+  /**
+   * Controls whether or not a cookie is sent with cross-site requests
+   */
+  sameSite?: SameSite;
+}
+
+export interface CookieSettingsOverrides {
+  idToken?: CookieSettings;
+  accessToken?: CookieSettings;
+  refreshToken?: CookieSettings;
+}
+
 export class Cookies {
 
   /**
@@ -137,4 +168,14 @@ export class Cookies {
   private static decodeValue = (str: string) =>
     str.replace(/(%[\dA-Fa-f]{2})+/g, decodeURIComponent);
 
+}
+
+export function getCookieDomain(cfDomain: string, disableCookieDomain: boolean, customCookieDomain: string | undefined = undefined): string | undefined {
+  if (disableCookieDomain) {
+    return undefined;
+  }
+  if (customCookieDomain) {
+    return customCookieDomain;
+  }
+  return cfDomain;
 }
