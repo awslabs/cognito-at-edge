@@ -22,20 +22,11 @@ export interface AuthenticatorParams {
   cookieSettingsOverrides?: CookieSettingsOverrides;
   logoutConfiguration?: LogoutConfiguration;
   parseAuthPath?: string;
+  idpIdentifier? : string;
+  scope?: string;
   csrfProtection?: {
     nonceSigningSecret: string;
   },
-}
-
-interface LogoutConfiguration {
-  logoutUri: string;
-  logoutRedirectUri: string;
-}
-
-interface Tokens {
-  accessToken?: string;
-  idToken?: string;
-  refreshToken?: string;
 }
 
 export class Authenticator {
@@ -59,6 +50,8 @@ export class Authenticator {
   _cookieSettingsOverrides?: CookieSettingsOverrides;
   _logger;
   _jwtVerifier;
+  _idpIdentifier? : string;
+  _scope?: string;
 
   constructor(params: AuthenticatorParams) {
     this._verifyParams(params);
@@ -84,6 +77,8 @@ export class Authenticator {
       clientId: params.userPoolAppId,
       tokenUse: 'id',
     });
+    this._scope=params.scope;
+    this._idpIdentifier=params.idpIdentifier;
     this._csrfProtection = params.csrfProtection;
     this._logoutConfiguration = params.logoutConfiguration;
     this._parseAuthPath = (params.parseAuthPath || '').replace(/^\//, '');
@@ -118,6 +113,11 @@ export class Authenticator {
     if (params.sameSite !== undefined && !SAME_SITE_VALUES.includes(params.sameSite)) {
       throw new Error('Expected params.sameSite to be a Strict || Lax || None');
     }
+    if ('idpIdentifier' in params && !('scope' in params)) {
+      throw new Error('Expected params.scope must be set if params.idpIdentifier is set');
+    }
+    if ('scope' in params && !('idpIdentifier' in params)) {
+      throw new Error('Expected params.idpIdentifier must be set if params.scope is set');
     if ('cookiePath' in params && typeof params.cookiePath !== 'string') {
       throw new Error('Expected params.cookiePath to be a string');
     }
@@ -709,6 +709,29 @@ export class Authenticator {
         if (this._csrfProtection) {
           this._validateCSRFCookies(request);
         }
+        let federatedParams='';
+        if(this._idpIdentifier!==undefined && this._scope!==undefined){
+          federatedParams=`&identity_provider=${this._idpIdentifier}&scope=${this._scope}`;
+        }
+        const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${redirectPath}${federatedParams}`;
+        this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
+        return {
+          status: '302',
+          headers: {
+            'location': [{
+              key: 'Location',
+              value: userPoolUrl,
+            }],
+            'cache-control': [{
+              key: 'Cache-Control',
+              value: 'no-cache, no-store, max-age=0, must-revalidate',
+            }],
+            'pragma': [{
+              key: 'Pragma',
+              value: 'no-cache',
+            }],
+          },
+        };
         const tokens = await this._fetchTokensFromCode(redirectURI, requestParams.code as string);
         const location = this._getRedirectUriFromState(requestParams.state as string);
 
