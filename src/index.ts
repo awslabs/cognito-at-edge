@@ -603,7 +603,8 @@ export class Authenticator {
     const { request } = event.Records[0].cf;
     const requestParams = parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
-    const redirectURI = `https://${cfDomain}`;
+    const path = request.uri
+    const redirectURI = `https://${cfDomain}${path}`;
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
@@ -658,7 +659,8 @@ export class Authenticator {
     const { request } = event.Records[0].cf;
     const requestParams = parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
-    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}`;
+    const path = request.uri
+    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}${path}`;
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
@@ -740,8 +742,9 @@ export class Authenticator {
 
     const { request } = event.Records[0].cf;
     const cfDomain = request.headers.host[0].value;
+    const path = request.uri
     const requestParams = parse(request.querystring);
-    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}`;
+    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}${path}`;
 
     try {
       let tokens = this._getTokensFromCookie(request.headers.cookie);
