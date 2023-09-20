@@ -603,8 +603,8 @@ export class Authenticator {
     const { request } = event.Records[0].cf;
     const requestParams = parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
-    const path = request.uri
-    const redirectURI = `https://${cfDomain}${path}`;
+    const uriPath = request.uri
+    const redirectURI = (uriPath === "/") ? `https://${cfDomain}` : `https://${cfDomain}${uriPath}`;
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
@@ -659,9 +659,8 @@ export class Authenticator {
     const { request } = event.Records[0].cf;
     const requestParams = parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
-    const path = request.uri
-    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}${path}`;
-
+    const uriPath = request.uri
+    const redirectURI = (uriPath === "/") ? `https://${cfDomain}` : `https://${cfDomain}${uriPath}`;
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
 
@@ -742,9 +741,9 @@ export class Authenticator {
 
     const { request } = event.Records[0].cf;
     const cfDomain = request.headers.host[0].value;
-    const path = request.uri
+    const uriPath = request.uri
     const requestParams = parse(request.querystring);
-    const redirectURI = requestParams.redirect_uri as string || `https://${cfDomain}${path}`;
+    const redirectURI = requestParams.redirect_uri as string || (uriPath === "/") ? `https://${cfDomain}` : `https://${cfDomain}${uriPath}`;
 
     try {
       let tokens = this._getTokensFromCookie(request.headers.cookie);
@@ -794,5 +793,9 @@ export class Authenticator {
       return this._clearCookies(event);
     }
   }
+}
+
+function stripTrailingSlash(input: string): string {
+  return input.replace(/\/$/, ''); // Remove trailing slash if it exists
 }
 
