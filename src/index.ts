@@ -794,8 +794,3 @@ export class Authenticator {
     }
   }
 }
-
-function stripTrailingSlash(input: string): string {
-  return input.replace(/\/$/, ''); // Remove trailing slash if it exists
-}
-
