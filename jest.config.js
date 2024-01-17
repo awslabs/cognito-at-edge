@@ -7,4 +7,7 @@ module.exports = {
       tsconfig: 'tsconfig.test.json',
     },
   },
+  moduleNameMapper: {
+    '^axios$': 'axios/dist/node/axios.cjs',
+  },
 };

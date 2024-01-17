@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "aws-jwt-verify": "^2.1.1",
-    "axios": "^0.25.0",
+    "axios": "^1.6.5",
     "pino": "^8.14.1"
   },
   "devDependencies": {
