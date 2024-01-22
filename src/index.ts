@@ -17,6 +17,7 @@ export interface AuthenticatorParams {
   httpOnly?: boolean;
   sameSite?: SameSite;
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+  redirectPath?: string;
   cookiePath?: string;
   cookieDomain?: string;
   cookieSettingsOverrides?: CookieSettingsOverrides;
@@ -48,6 +49,7 @@ export class Authenticator {
   _disableCookieDomain: boolean;
   _httpOnly: boolean;
   _sameSite?: SameSite;
+  _redirectPath?: string;
   _cookieBase: string;
   _cookiePath?: string;
   _cookieDomain?: string;
@@ -72,6 +74,7 @@ export class Authenticator {
     this._cookieDomain = params.cookieDomain;
     this._httpOnly = ('httpOnly' in params && params.httpOnly === true);
     this._sameSite = params.sameSite;
+    this._redirectPath = params.redirectPath;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._cookiePath = params.cookiePath;
     this._cookieSettingsOverrides = params.cookieSettingsOverrides || {};
@@ -103,6 +106,9 @@ export class Authenticator {
         throw new Error(`Expected params.${param} to be a string`);
       }
     });
+    if ('redirectPath' in params && (typeof params.redirectPath !== 'string' || !/\/\w+/.test(params.redirectPath))) {
+      throw new Error('Expected params.redirectPath to be a valid non-empty string starting with "/"');
+    }
     if (params.cookieExpirationDays && typeof params.cookieExpirationDays !== 'number') {
       throw new Error('Expected params.cookieExpirationDays to be a number');
     }
@@ -603,7 +609,7 @@ export class Authenticator {
     const { request } = event.Records[0].cf;
     const requestParams = parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
-    const redirectURI = `https://${cfDomain}`;
+    const redirectURI = this._redirectPath ? `https://${cfDomain}${this._redirectPath}` : `https://${cfDomain}`;
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);

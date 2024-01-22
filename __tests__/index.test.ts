@@ -803,6 +803,21 @@ describe('handle', () => {
     expect(cookies.find(c => c.match(`.${PKCE_COOKIE_NAME_SUFFIX}=`))).toBeDefined();
   });
 
+  test('should redirect to auth domain with custom return redirect if unauthenticated', async () => {
+    let authenticatorWithCustomRedirect : any = new Authenticator({
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_abcdef123',
+      userPoolAppId: '123456789qwertyuiop987abcd',
+      userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
+      redirectPath: '/custom/login/path',
+    });
+    jest.spyOn(authenticatorWithCustomRedirect._jwtVerifier, 'verify');
+    authenticatorWithCustomRedirect._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error(); });
+    const response = await authenticatorWithCustomRedirect.handle(getCloudfrontRequest());
+    const url = new URL(response.headers['location'][0].value);
+    expect(url.searchParams.get('redirect_uri')).toEqual('https://d111111abcdef8.cloudfront.net/custom/login/path');
+  });
+
   test('should revoke tokens and clear cookies if logoutConfiguration is set', () => {
     authenticator._logoutConfiguration = { logoutUri: '/logout' };
     authenticator._getTokensFromCookie.mockReturnValueOnce({ refreshToken: tokenData.refresh_token });
