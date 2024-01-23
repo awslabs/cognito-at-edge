@@ -60,6 +60,7 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
   * `disableCookieDomain` *boolean* (Optional) Sets domain attribute in cookies, defaults to false (eg: `false`)
   * `httpOnly` *boolean* (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
   * `sameSite` *Strict | Lax | None* (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
+  * `redirectPath` *string* (Optional) URI path used as redirect target after successful Cognito authentication (eg: `/oauth2/idpresponse`), defaults to the website root path. Needs to be a path that is handled by the library.
   * `cookiePath` *string* (Optional) Sets Path attribute in cookies
   * `cookieDomain` *string* (Optional) Sets the domain name used for the token cookies
   * `cookieSettingsOverrides` *object* (Optional) Cookie settings overrides for different token cookies -- idToken, accessToken and refreshToken
