@@ -62,7 +62,7 @@ export class Authenticator {
   _cookieSettingsOverrides?: CookieSettingsOverrides;
   _logger;
   _jwtVerifier;
-  _jwtVerifierFetcherRequestOptions?: AuthenticatorParams['jwtVerifierFetcherRequestOptions'] = undefined
+  _jwtVerifierFetcherRequestOptions?: AuthenticatorParams['jwtVerifierFetcherRequestOptions']
 
   constructor(params: AuthenticatorParams) {
     this._verifyParams(params);
