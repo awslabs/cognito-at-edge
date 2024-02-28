@@ -29,7 +29,6 @@ describe('private functions', () => {
       cookieExpirationDays: 365,
       disableCookieDomain: false,
       httpOnly: false,
-      logLevel: 'error',
     });
   });
 
@@ -82,7 +81,6 @@ describe('private functions', () => {
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
       disableCookieDomain: true,
-      logLevel: 'error',
     });
     authenticatorWithNoCookieDomain._jwtVerifier.cacheJwks(jwksData);
 
@@ -121,7 +119,6 @@ describe('private functions', () => {
       cookieExpirationDays: 365,
       disableCookieDomain: false,
       httpOnly: true,
-      logLevel: 'error',
     });
     authenticatorWithHttpOnly._jwtVerifier.cacheJwks(jwksData);
 
@@ -160,7 +157,6 @@ describe('private functions', () => {
       cookieExpirationDays: 365,
       disableCookieDomain: false,
       httpOnly: true,
-      logLevel: 'error',
       sameSite: 'Strict',
     });
     authenticatorWithSameSite._jwtVerifier.cacheJwks(jwksData);
@@ -200,7 +196,6 @@ describe('private functions', () => {
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
       disableCookieDomain: false,
-      logLevel: 'error',
       cookiePath,
     });
     authenticatorWithPath._jwtVerifier.cacheJwks(jwksData);
@@ -240,7 +235,6 @@ describe('private functions', () => {
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
       disableCookieDomain: false,
-      logLevel: 'error',
       cookiePath,
       csrfProtection: {
         nonceSigningSecret: 'foo-bar',
@@ -286,7 +280,6 @@ describe('private functions', () => {
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
       disableCookieDomain: false,
-      logLevel: 'error',
       cookiePath,
       httpOnly: true,
       csrfProtection: {
@@ -656,7 +649,6 @@ describe('handle', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
-      logLevel: 'debug',
     });
     authenticator._jwtVerifier.cacheJwks(jwksData);
     jest.spyOn(authenticator, '_getTokensFromCookie');
@@ -843,7 +835,6 @@ describe('handleSignIn', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
-      logLevel: 'debug',
       parseAuthPath: 'parseAuth',
     });
     authenticator._jwtVerifier.cacheJwks(jwksData);
@@ -886,7 +877,6 @@ describe('handleParseAuth', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
-      logLevel: 'debug',
       parseAuthPath: 'parseAuth',
     });
     authenticator._jwtVerifier.cacheJwks(jwksData);
@@ -978,7 +968,6 @@ describe('handleRefreshToken', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
-      logLevel: 'debug',
     });
     authenticator._jwtVerifier.cacheJwks(jwksData);
     jest.spyOn(authenticator, '_getTokensFromCookie');
@@ -1030,7 +1019,6 @@ describe('handleSignOut', () => {
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
       cookieExpirationDays: 365,
-      logLevel: 'debug',
     });
     authenticator._jwtVerifier.cacheJwks(jwksData);
     jest.spyOn(authenticator, '_getTokensFromCookie');
