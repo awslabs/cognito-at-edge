@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "lint": "eslint .",
     "test": "jest --coverage"
   },
   "dependencies": {
