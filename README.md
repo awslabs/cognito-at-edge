@@ -60,6 +60,7 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
   * `disableCookieDomain` *boolean* (Optional) Sets domain attribute in cookies, defaults to false (eg: `false`)
   * `httpOnly` *boolean* (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
   * `sameSite` *Strict | Lax | None* (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
+  * `parseAuthPath` *string* (Optional) URI path used as redirect target after successful Cognito authentication (eg: `/oauth2/idpresponse`), defaults to the web domain root. Needs to be a path that is handled by the library. When using this parameter, you should also provide a value for `cookiePath` to ensure your cookies are available for the right paths.
   * `cookiePath` *string* (Optional) Sets Path attribute in cookies
   * `cookieDomain` *string* (Optional) Sets the domain name used for the token cookies
   * `cookieSettingsOverrides` *object* (Optional) Cookie settings overrides for different token cookies -- idToken, accessToken and refreshToken
@@ -73,7 +74,6 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
   * `logoutConfiguration` *object* (Optional) Enables logout functionality
     * `logoutUri` *string* URI path, which when matched with request, logs user out by revoking tokens and clearing cookies
     * `logoutRedirectUri` *string* The URI to which the user is redirected to after logging them out
-  * `parseAuthPath` *string* (Optional) URI path to use for the parse auth handler, when the library is used in an authentication gateway setup
   * `csrfProtection` *object* (Optional) Enables CSRF protection
     * `nonceSigningSecret` *string* Secret used for signing nonce cookies
   * `logLevel` *string* (Optional) Logging level. Default: `'silent'`. One of `'fatal'`, `'error'`, `'warn'`, `'info'`, `'debug'`, `'trace'` or `'silent'`.
