@@ -722,6 +722,31 @@ describe('handle', () => {
       });
   });
 
+  test('should fetch and set token if code is present (custom redirect)', () => {
+    const authenticatorWithCustomRedirect : any = new Authenticator({
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_abcdef123',
+      userPoolAppId: '123456789qwertyuiop987abcd',
+      userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
+      parseAuthPath: '/custom/login/path',
+    });
+    jest.spyOn(authenticatorWithCustomRedirect._jwtVerifier, 'verify');
+    jest.spyOn(authenticatorWithCustomRedirect, '_fetchTokensFromCode');
+    jest.spyOn(authenticatorWithCustomRedirect, '_getRedirectResponse');
+    authenticatorWithCustomRedirect._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error(); });
+    authenticatorWithCustomRedirect._fetchTokensFromCode.mockResolvedValueOnce(tokenData);
+    authenticatorWithCustomRedirect._getRedirectResponse.mockReturnValueOnce({ response: 'toto' });
+    const request = getCloudfrontRequest();
+    request.Records[0].cf.request.querystring = 'code=54fe5f4e&state=/lol';
+    return expect(authenticatorWithCustomRedirect.handle(request)).resolves.toEqual({ response: 'toto' })
+      .then(() => {
+        expect(authenticatorWithCustomRedirect._jwtVerifier.verify).toHaveBeenCalled();
+        expect(authenticatorWithCustomRedirect._fetchTokensFromCode).toHaveBeenCalledWith('https://d111111abcdef8.cloudfront.net/custom/login/path', '54fe5f4e');
+        expect(authenticatorWithCustomRedirect._getRedirectResponse).toHaveBeenCalledWith(tokenData, 'd111111abcdef8.cloudfront.net', '/lol');
+      });
+  });
+
+
   test('should fetch and set token if code is present and when csrfProtection is enabled', () => {
     authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error(); });
     authenticator._fetchTokensFromCode.mockResolvedValueOnce(tokenData);
@@ -768,6 +793,40 @@ describe('handle', () => {
       });
   });
 
+  test('should redirect to auth domain if unauthenticated and no code (custom redirect)', () => {
+    const authenticatorWithCustomRedirect : any = new Authenticator({
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_abcdef123',
+      userPoolAppId: '123456789qwertyuiop987abcd',
+      userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
+      parseAuthPath: '/custom/login/path',
+    });
+    jest.spyOn(authenticatorWithCustomRedirect._jwtVerifier, 'verify');
+    authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error();});
+    return expect(authenticatorWithCustomRedirect.handle(getCloudfrontRequest())).resolves.toEqual(
+      {
+        status: '302',
+        headers: {
+          'location': [{
+            key: 'Location',
+            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net/custom/login/path&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3F%3Fparam%3D1',
+          }],
+          'cache-control': [{
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, max-age=0, must-revalidate',
+          }],
+          'pragma': [{
+            key: 'Pragma',
+            value: 'no-cache',
+          }],
+        },
+      },
+    )
+      .then(() => {
+        expect(authenticatorWithCustomRedirect._jwtVerifier.verify).toHaveBeenCalled();
+      });
+  });
+
   test('should redirect to auth domain and clear csrf cookies if unauthenticated and no code', async () => {
     authenticator._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error(); });
     authenticator._csrfProtection = {
@@ -804,12 +863,12 @@ describe('handle', () => {
   });
 
   test('should redirect to auth domain with custom return redirect if unauthenticated', async () => {
-    let authenticatorWithCustomRedirect : any = new Authenticator({
+    const authenticatorWithCustomRedirect : any = new Authenticator({
       region: 'us-east-1',
       userPoolId: 'us-east-1_abcdef123',
       userPoolAppId: '123456789qwertyuiop987abcd',
       userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
-      redirectPath: '/custom/login/path',
+      parseAuthPath: '/custom/login/path',
     });
     jest.spyOn(authenticatorWithCustomRedirect._jwtVerifier, 'verify');
     authenticatorWithCustomRedirect._jwtVerifier.verify.mockImplementationOnce(async () => { throw new Error(); });

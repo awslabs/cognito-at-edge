@@ -17,7 +17,6 @@ export interface AuthenticatorParams {
   httpOnly?: boolean;
   sameSite?: SameSite;
   logLevel?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
-  redirectPath?: string;
   cookiePath?: string;
   cookieDomain?: string;
   cookieSettingsOverrides?: CookieSettingsOverrides;
@@ -49,7 +48,6 @@ export class Authenticator {
   _disableCookieDomain: boolean;
   _httpOnly: boolean;
   _sameSite?: SameSite;
-  _redirectPath?: string;
   _cookieBase: string;
   _cookiePath?: string;
   _cookieDomain?: string;
@@ -74,7 +72,6 @@ export class Authenticator {
     this._cookieDomain = params.cookieDomain;
     this._httpOnly = ('httpOnly' in params && params.httpOnly === true);
     this._sameSite = params.sameSite;
-    this._redirectPath = params.redirectPath;
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._cookiePath = params.cookiePath;
     this._cookieSettingsOverrides = params.cookieSettingsOverrides || {};
@@ -106,9 +103,6 @@ export class Authenticator {
         throw new Error(`Expected params.${param} to be a string`);
       }
     });
-    if ('redirectPath' in params && (typeof params.redirectPath !== 'string' || !/\/\w+/.test(params.redirectPath))) {
-      throw new Error('Expected params.redirectPath to be a valid non-empty string starting with "/"');
-    }
     if (params.cookieExpirationDays && typeof params.cookieExpirationDays !== 'number') {
       throw new Error('Expected params.cookieExpirationDays to be a number');
     }
@@ -532,15 +526,9 @@ export class Authenticator {
    * @return {CloudFrontResultResponse} Redirect response.
    */
   _getRedirectToCognitoUserPoolResponse(request: CloudFrontRequest, redirectURI: string): CloudFrontResultResponse {
-    const cfDomain = request.headers.host[0].value;
     let redirectPath = request.uri;
     if (request.querystring && request.querystring !== '') {
       redirectPath += encodeURIComponent('?' + request.querystring);
-    }
-
-    let oauthRedirectUri = redirectURI;
-    if (this._parseAuthPath) {
-      oauthRedirectUri = `https://${cfDomain}/${this._parseAuthPath}`;
     }
 
     let csrfTokens: CSRFTokens = {};
@@ -550,7 +538,7 @@ export class Authenticator {
       state = csrfTokens.state;
     }
 
-    const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${oauthRedirectUri}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
+    const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
 
     this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
   
@@ -607,9 +595,8 @@ export class Authenticator {
     this._logger.debug({ msg: 'Handling Lambda@Edge event', event });
 
     const { request } = event.Records[0].cf;
-    const requestParams = parse(request.querystring);
     const cfDomain = request.headers.host[0].value;
-    const redirectURI = this._redirectPath ? `https://${cfDomain}${this._redirectPath}` : `https://${cfDomain}`;
+    const redirectURI = this._parseAuthPath ? `https://${cfDomain}/${this._parseAuthPath}` : `https://${cfDomain}`;
 
     try {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
@@ -637,10 +624,12 @@ export class Authenticator {
       }
     } catch (err) {
       if (this._logoutConfiguration && request.uri.startsWith(this._logoutConfiguration.logoutUri)) {
-        this._logger.info({ msg: 'Clearing cookies', path: redirectURI });
+        this._logger.info({ msg: 'Clearing cookies', path: cfDomain });
         return this._clearCookies(event);
       }
       this._logger.debug("User isn't authenticated: %s", err);
+
+      const requestParams = parse(request.querystring);
       if (requestParams.code) {
         return this._fetchTokensFromCode(redirectURI, requestParams.code as string)
           .then(tokens => this._getRedirectResponse(tokens, cfDomain, this._getRedirectUriFromState(requestParams.state as string)));
@@ -684,7 +673,9 @@ export class Authenticator {
       };
     } catch (err) {
       this._logger.debug("User isn't authenticated: %s", err);
-      return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
+      return this._getRedirectToCognitoUserPoolResponse(
+        request, this._parseAuthPath ? `https://${cfDomain}/${this._parseAuthPath}` : redirectURI,
+      );
     }
   }
 
@@ -762,7 +753,9 @@ export class Authenticator {
       return this._getRedirectResponse(tokens, cfDomain, redirectURI);
     } catch (err) {
       this._logger.debug("User isn't authenticated: %s", err);
-      return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
+      return this._getRedirectToCognitoUserPoolResponse(
+        request, this._parseAuthPath ? `https://${cfDomain}/${this._parseAuthPath}` : redirectURI,
+      );
     }
   }
 
