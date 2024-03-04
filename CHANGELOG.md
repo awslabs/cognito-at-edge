@@ -1,6 +1,20 @@
 # Changelog
 
-## [1.5.0](https://github.com/awslabs/cognito-at-edge/tree/1.5.0) (2023-07-21)
+## [1.5.1](https://github.com/awslabs/cognito-at-edge/tree/1.5.1) (2024-03-04)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.5.0...1.5.1)
+
+**Fixed:**
+
+- Add support for custom cognito redirect path [\#87](https://github.com/awslabs/cognito-at-edge/pull/87) ([fknittel](https://github.com/fknittel))
+
+**Merged pull requests:**
+
+- Bump @babel/traverse from 7.20.13 to 7.24.0 [\#91](https://github.com/awslabs/cognito-at-edge/pull/91) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump tough-cookie from 4.1.2 to 4.1.3 [\#90](https://github.com/awslabs/cognito-at-edge/pull/90) ([dependabot[bot]](https://github.com/apps/dependabot))
+- chore: update axios to 1.6.5 to resolve npm audit alarm [\#85](https://github.com/awslabs/cognito-at-edge/pull/85) ([elliotsegler](https://github.com/elliotsegler))
+
+## [1.5.0](https://github.com/awslabs/cognito-at-edge/tree/1.5.0) (2023-07-24)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.4.0...1.5.0)
 
