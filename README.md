@@ -1,6 +1,6 @@
 # Cognito@Edge
 
-*Cognito authentication made easy to protect your website with CloudFront and Lambda@Edge.*
+_Cognito authentication made easy to protect your website with CloudFront and Lambda@Edge._
 
 This Node.js package helps you verify that users making requests to a CloudFront distribution are authenticated using a Cognito user pool. It achieves that by looking at the cookies included in the request and, if the requester is not authenticated, it will redirect then to the user pool's login page.
 
@@ -20,17 +20,17 @@ If you need more configuration options (e.g. bring your own user pool or CloudFr
 
 The preferred way to install the AWS cognito-at-edge for Node.js is to use the [npm](http://npmjs.org/) package manager for Node.js. Simply type the following into a terminal window:
 
-``` shell
+```shell
 npm install cognito-at-edge
 ```
 
 ### Usage
 
-To use the package, you must create a [Lambda@Edge function](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html) and associate it with the CloudFront distribution's *viewer request* events.
+To use the package, you must create a [Lambda@Edge function](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html) and associate it with the CloudFront distribution's _viewer request_ events.
 
 Within your Lambda@Edge function, you can import and use the `Authenticator` class as shown here:
 
-``` js
+```js
 const { Authenticator } = require('cognito-at-edge');
 
 const authenticator = new Authenticator({
@@ -50,40 +50,40 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
 
 ### Authenticator(params)
 
-* `params` *Object* Authenticator parameters:
-  * `region` *string* Cognito UserPool region (eg: `us-east-1`)
-  * `userPoolId` *string* Cognito UserPool ID (eg: `us-east-1_tyo1a1FHH`)
-  * `userPoolAppId` *string* Cognito UserPool Application ID (eg: `63gcbm2jmskokurt5ku9fhejc6`)
-  * `userPoolAppSecret` *string* (Optional) Cognito UserPool Application Secret (eg: `oh470px2i0uvy4i2ha6sju0vxe4ata9ol3m63ufhs2t8yytwjn7p`)
-  * `userPoolDomain` *string* Cognito UserPool domain (eg: `your-domain.auth.us-east-1.amazoncognito.com`)
-  * `cookieExpirationDays` *number* (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`). It's recommended to set this value to match `refreshTokenValidity` parameter of the pool client.
-  * `disableCookieDomain` *boolean* (Optional) Sets domain attribute in cookies, defaults to false (eg: `false`)
-  * `httpOnly` *boolean* (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
-  * `sameSite` *Strict | Lax | None* (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
-  * `parseAuthPath` *string* (Optional) URI path used as redirect target after successful Cognito authentication (eg: `/oauth2/idpresponse`), defaults to the web domain root. Needs to be a path that is handled by the library. When using this parameter, you should also provide a value for `cookiePath` to ensure your cookies are available for the right paths.
-  * `cookiePath` *string* (Optional) Sets Path attribute in cookies
-  * `cookieDomain` *string* (Optional) Sets the domain name used for the token cookies
-  * `cookieSettingsOverrides` *object* (Optional) Cookie settings overrides for different token cookies -- idToken, accessToken and refreshToken
-    * `idToken` *CookieSettings* (Optional) Setting overrides to use for idToken
-      * `expirationDays` *number* (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`). It's recommended to set this value to match `refreshTokenValidity` parameter of the pool client.
-      * `path` *string* (Optional) Sets Path attribute in cookies
-      * `httpOnly` *boolean* (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
-      * `sameSite` *Strict | Lax | None* (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
-    * `accessToken` *CookieSettings* (Optional) Setting overrides to use for accessToken
-    * `refreshToken` *CookieSettings* (Optional) Setting overrides to use for refreshToken
-  * `logoutConfiguration` *object* (Optional) Enables logout functionality
-    * `logoutUri` *string* URI path, which when matched with request, logs user out by revoking tokens and clearing cookies
-    * `logoutRedirectUri` *string* The URI to which the user is redirected to after logging them out
-  * `csrfProtection` *object* (Optional) Enables CSRF protection
-    * `nonceSigningSecret` *string* Secret used for signing nonce cookies
-  * `logLevel` *string* (Optional) Logging level. Default: `'silent'`. One of `'fatal'`, `'error'`, `'warn'`, `'info'`, `'debug'`, `'trace'` or `'silent'`.
+- `params` _Object_ Authenticator parameters:
+  - `region` _string_ Cognito UserPool region (eg: `us-east-1`)
+  - `userPoolId` _string_ Cognito UserPool ID (eg: `us-east-1_tyo1a1FHH`)
+  - `userPoolAppId` _string_ Cognito UserPool Application ID (eg: `63gcbm2jmskokurt5ku9fhejc6`)
+  - `userPoolAppSecret` _string_ (Optional) Cognito UserPool Application Secret (eg: `oh470px2i0uvy4i2ha6sju0vxe4ata9ol3m63ufhs2t8yytwjn7p`)
+  - `userPoolDomain` _string_ Cognito UserPool domain (eg: `your-domain.auth.us-east-1.amazoncognito.com`)
+  - `cookieExpirationDays` _number_ (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`). It's recommended to set this value to match `refreshTokenValidity` parameter of the pool client.
+  - `disableCookieDomain` _boolean_ (Optional) Sets domain attribute in cookies, defaults to false (eg: `false`)
+  - `httpOnly` _boolean_ (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
+  - `sameSite` _Strict | Lax | None_ (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
+  - `parseAuthPath` _string_ (Optional) URI path used as redirect target after successful Cognito authentication (eg: `/oauth2/idpresponse`), defaults to the web domain root. Needs to be a path that is handled by the library. When using this parameter, you should also provide a value for `cookiePath` to ensure your cookies are available for the right paths.
+  - `cookiePath` _string_ (Optional) Sets Path attribute in cookies
+  - `cookieDomain` _string_ (Optional) Sets the domain name used for the token cookies
+  - `cookieSettingsOverrides` _object_ (Optional) Cookie settings overrides for different token cookies -- idToken, accessToken and refreshToken
+    - `idToken` _CookieSettings_ (Optional) Setting overrides to use for idToken
+      - `expirationDays` _number_ (Optional) Number of day to set cookies expiration date, default to 365 days (eg: `365`). It's recommended to set this value to match `refreshTokenValidity` parameter of the pool client.
+      - `path` _string_ (Optional) Sets Path attribute in cookies
+      - `httpOnly` _boolean_ (Optional) Forbids JavaScript from accessing the cookies, defaults to false (eg: `false`). Note, if this is set to `true`, the cookies will not be accessible to Amplify auth if you are using it client side.
+      - `sameSite` _Strict | Lax | None_ (Optional) Allows you to declare if your cookie should be restricted to a first-party or same-site context (eg: `SameSite=None`).
+    - `accessToken` _CookieSettings_ (Optional) Setting overrides to use for accessToken
+    - `refreshToken` _CookieSettings_ (Optional) Setting overrides to use for refreshToken
+  - `logoutConfiguration` _object_ (Optional) Enables logout functionality
+    - `logoutUri` _string_ URI path, which when matched with request, logs user out by revoking tokens and clearing cookies
+    - `logoutRedirectUri` _string_ The URI to which the user is redirected to after logging them out
+  - `csrfProtection` _object_ (Optional) Enables CSRF protection
+    - `nonceSigningSecret` _string_ Secret used for signing nonce cookies
+  - `logLevel` _string_ (Optional) Logging level. Default: `'silent'`. One of `'fatal'`, `'error'`, `'warn'`, `'info'`, `'debug'`, `'trace'` or `'silent'`.
 
-*This is the class constructor.*
+_This is the class constructor._
 
 ### handle(request)
 
-* `request` *Object* Lambda@Edge request object
-  * See AWS doc for details: [Lambda@Edge events](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html)
+- `request` _Object_ Lambda@Edge request object
+  - See AWS doc for details: [Lambda@Edge events](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html)
 
 Use it as your Lambda Handler. It will authenticate each query.
 
@@ -93,9 +93,11 @@ exports.handler = async (request) => authenticator.handle(request);
 ```
 
 ### Authentication Gateway Setup
+
 This library can also be used in an authentication gateway setup. If you have a frontend client application that uses AWS Cognito for authentication, it fetches and stores authentication tokens in the browser. Depending on where the tokens are stored in the browser (localStorage, cookies, sessionStorage), they may susceptible to token theft and XSS (Cross-Site Scripting). In order to mitigate this risk, a set of Lambda@Edge handlers can be deployed on a CloudFront distribution which act as an authentication gateway intermediary between the frontend app and Cognito. These handlers will authenticate and fetch tokens on the frontend's behalf and set them as [Secure; HttpOnly](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#restrict_access_to_cookies) tokens inside the browser, thereby restricting access to other scripts in the app.
 
 Handlers
+
 1. `handleSignIn` (Can be mapped to `/signIn` in Cloudfront setup): Redirect users to Cognito's authorize endpoint after replacing redirect uri with its own -- for instance, `/parseAuth`.
 1. `handleParseAuth` (Can be mapped to `/parseAuth`): Exchange Cognito's OAuth code for tokens. Store tokens in browser as HttpOnly cookies
 1. `handleRefreshToken` (Can be mapped to `/refreshToken`): Refresh idToken and accessToken using refreshToken
@@ -109,13 +111,12 @@ exports.handler = async (request) => authenticator.handleSignIn(request);
 // Similar setup for parseAuth, refreshToken and signOut handlers
 ```
 
-
 ### Getting Help
 
-The best way to interact with our team is through GitHub.  You can [open an issue](https://github.com/awslabs/cognito-at-edge/issues/new/choose) 
-and choose from one of our templates for [bug reports](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=bug%2C+needs-triage&template=---bug-report.md&title=), 
-[feature requests](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=feature-request&template=---feature-request.md&title=) or 
-[question](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=question%2C+needs-triage&template=---questions---help.md&title=).  
+The best way to interact with our team is through GitHub. You can [open an issue](https://github.com/awslabs/cognito-at-edge/issues/new/choose)
+and choose from one of our templates for [bug reports](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=bug%2C+needs-triage&template=---bug-report.md&title=),
+[feature requests](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=feature-request&template=---feature-request.md&title=) or
+[question](https://github.com/awslabs/cognito-at-edge/issues/new?assignees=&labels=question%2C+needs-triage&template=---questions---help.md&title=).
 
 ## Contributing
 

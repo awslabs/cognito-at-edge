@@ -23,7 +23,7 @@ export const CSRF_CONFIG = {
 export function generateNonce() {
   const randomString = generateSecret(
     CSRF_CONFIG.secretAllowedCharacters,
-    CSRF_CONFIG.nonceLength
+    CSRF_CONFIG.nonceLength,
   );
   return `${getCurrentTimestampInSeconds()}T${randomString}`;
 }
@@ -37,8 +37,8 @@ export function generateCSRFTokens(redirectURI: string, signingSecret: string) {
       JSON.stringify({
         nonce,
         redirect_uri: redirectURI,
-      })
-    ).toString('base64')
+      }),
+    ).toString('base64'),
   );
 
   return {
@@ -50,16 +50,23 @@ export function generateCSRFTokens(redirectURI: string, signingSecret: string) {
 }
 
 export function getCurrentTimestampInSeconds(): number {
-  return (Date.now() / 1000) || 0;
+  return Date.now() / 1000 || 0;
 }
 
-export function generateSecret(allowedCharacters: string, secretLength: number) {
+export function generateSecret(
+  allowedCharacters: string,
+  secretLength: number,
+) {
   return [...new Array(secretLength)]
     .map(() => allowedCharacters[randomInt(0, allowedCharacters.length)])
     .join('');
 }
 
-export function sign(stringToSign: string, secret: string, signatureLength: number): string {
+export function sign(
+  stringToSign: string,
+  secret: string,
+  signatureLength: number,
+): string {
   const digest = createHmac('sha256', secret)
     .update(stringToSign)
     .digest('base64')
@@ -95,12 +102,12 @@ export const urlSafe = {
 export function generatePkceVerifier() {
   const pkce = generateSecret(
     CSRF_CONFIG.secretAllowedCharacters,
-    CSRF_CONFIG.pkceLength
+    CSRF_CONFIG.pkceLength,
   );
   const verifier = {
     pkce,
     pkceHash: urlSafe.stringify(
-      createHash('sha256').update(pkce, 'utf8').digest('base64')
+      createHash('sha256').update(pkce, 'utf8').digest('base64'),
     ),
   };
   return verifier;
