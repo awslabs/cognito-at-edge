@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.5.2](https://github.com/awslabs/cognito-at-edge/tree/1.5.2) (2024-06-28)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.5.1...1.5.2)
+
+**Merged pull requests:**
+
+- chore: bump ws from 7.5.9 to 7.5.10 [\#97](https://github.com/awslabs/cognito-at-edge/pull/97) ([dependabot[bot]](https://github.com/apps/dependabot))
+- chore: bump braces from 3.0.2 to 3.0.3 [\#96](https://github.com/awslabs/cognito-at-edge/pull/96) ([dependabot[bot]](https://github.com/apps/dependabot))
+- chore: bump follow-redirects from 1.15.5 to 1.15.6 [\#95](https://github.com/awslabs/cognito-at-edge/pull/95) ([dependabot[bot]](https://github.com/apps/dependabot))
+
 ## [1.5.1](https://github.com/awslabs/cognito-at-edge/tree/1.5.1) (2024-03-04)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.5.0...1.5.1)
