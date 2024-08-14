@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.3](https://github.com/awslabs/cognito-at-edge/tree/1.5.3) (2024-08-14)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.5.2...1.5.3)
+
+**Merged pull requests:**
+
+- chore: bump axios from 1.6.7 to 1.7.4 [\#99](https://github.com/awslabs/cognito-at-edge/pull/99) ([dependabot[bot]](https://github.com/apps/dependabot))
+
 ## [1.5.2](https://github.com/awslabs/cognito-at-edge/tree/1.5.2) (2024-06-28)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.5.1...1.5.2)
