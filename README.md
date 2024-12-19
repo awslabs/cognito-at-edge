@@ -77,6 +77,7 @@ For an explanation of the interactions between CloudFront, Cognito and Lambda@Ed
   * `csrfProtection` *object* (Optional) Enables CSRF protection
     * `nonceSigningSecret` *string* Secret used for signing nonce cookies
   * `logLevel` *string* (Optional) Logging level. Default: `'silent'`. One of `'fatal'`, `'error'`, `'warn'`, `'info'`, `'debug'`, `'trace'` or `'silent'`.
+  * `jwtVerifierFetcherRequestOptions` *object* (Optional) Default: undefined. Use to override JwtVerifier fetcher request options, for example re-configuring the JWKS response timeout from the default 1500ms. The interface for request options adds one additional option to the Node.js standard RequestOptions, "responseTimeout", with which a timeout can be set within which the response must be received. (Note the "timeout" in the Node.js standard RequestOptions, concerns something else: the socket idle timeout). See https://github.com/awslabs/aws-jwt-verify#configuring-the-jwks-response-timeout-and-other-http-options-with-jsonfetcher for more information.
 
 *This is the class constructor.*
 
