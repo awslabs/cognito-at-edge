@@ -617,7 +617,7 @@ export class Authenticator {
         if (tokens.refreshToken) {
           this._logger.debug({ msg: 'Verifying idToken failed, verifying refresh token instead...', tokens, err });
           return await this._fetchTokensFromRefreshToken(redirectURI, tokens.refreshToken)
-            .then(tokens => this._getRedirectResponse(tokens, cfDomain, request.uri));
+            .then(tokens => this._getRedirectResponse(tokens, cfDomain, request.querystring ? `${request.uri}?${request.querystring}` : request.uri));
         } else {
           throw err;
         }
