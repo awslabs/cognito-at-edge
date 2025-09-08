@@ -25,7 +25,15 @@ export interface AuthenticatorParams {
   csrfProtection?: {
     nonceSigningSecret: string;
   },
+  language?: SupportedLanguage;
 }
+
+// Supported languages for Cognito managed login UI
+export type SupportedLanguage = 'de' | 'en' | 'es' | 'fr' | 'id' | 'it' | 'ja' | 'ko' | 'pt-BR' | 'zh-CN' | 'zh-TW';
+
+export const SUPPORTED_LANGUAGES: readonly SupportedLanguage[] = [
+  'de', 'en', 'es', 'fr', 'id', 'it', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW',
+] as const;
 
 interface LogoutConfiguration {
   logoutUri: string;
@@ -57,6 +65,7 @@ export class Authenticator {
   _logoutConfiguration?: LogoutConfiguration;
   _parseAuthPath?: string;
   _cookieSettingsOverrides?: CookieSettingsOverrides;
+  _language?: SupportedLanguage;
   _logger;
   _jwtVerifier;
 
@@ -75,6 +84,7 @@ export class Authenticator {
     this._cookieBase = `CognitoIdentityServiceProvider.${params.userPoolAppId}`;
     this._cookiePath = params.cookiePath;
     this._cookieSettingsOverrides = params.cookieSettingsOverrides || {};
+    this._language = params.language;
     this._logger = pino({
       level: params.logLevel || 'silent', // Default to silent
       base: null, //Remove pid, hostname and name logging as not usefull for Lambda
@@ -123,6 +133,9 @@ export class Authenticator {
     }
     if (params.logoutConfiguration && !/\/\w+/.test(params.logoutConfiguration.logoutUri)) {
       throw new Error('Expected params.logoutConfiguration.logoutUri to be a valid non-empty string starting with "/"');
+    }
+    if (params.language !== undefined && !SUPPORTED_LANGUAGES.includes(params.language)) {
+      throw new Error(`Expected params.language to be one of: ${SUPPORTED_LANGUAGES.join(', ')}`);
     }
   }
 
@@ -538,7 +551,10 @@ export class Authenticator {
       state = csrfTokens.state;
     }
 
-    const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
+    // Build the Cognito User Pool URL with optional language parameter
+    const baseParams = `redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
+    const languageParam = this._language ? `&lang=${this._language}` : '';
+    const userPoolUrl = `https://${this._userPoolDomain}/authorize?${baseParams}${languageParam}`;
 
     this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
   
