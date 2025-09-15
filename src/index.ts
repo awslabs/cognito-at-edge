@@ -275,7 +275,7 @@ export class Authenticator {
    * @param  {String} location Path to redirection.
    * @return Lambda@Edge response.
    */
-  async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontResultResponse> {
+  async _getRedirectResponse(tokens: Tokens, domain: string, location: string, keepMethod: boolean = false): Promise<CloudFrontResultResponse> {
     const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
     const username = decoded['cognito:username'] as string;
     const usernameBase = `${this._cookieBase}.${username}`;
@@ -309,7 +309,7 @@ export class Authenticator {
     }
 
     const response: CloudFrontResultResponse = {
-      status: '302' ,
+      status: keepMethod ? '307' : '302' ,
       headers: {
         'location': [{
           key: 'Location',
@@ -617,7 +617,7 @@ export class Authenticator {
         if (tokens.refreshToken) {
           this._logger.debug({ msg: 'Verifying idToken failed, verifying refresh token instead...', tokens, err });
           return await this._fetchTokensFromRefreshToken(redirectURI, tokens.refreshToken)
-            .then(tokens => this._getRedirectResponse(tokens, cfDomain, request.uri));
+            .then(tokens => this._getRedirectResponse(tokens, cfDomain, request.uri, true));
         } else {
           throw err;
         }
