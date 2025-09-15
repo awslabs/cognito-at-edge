@@ -637,6 +637,39 @@ describe('createAuthenticator', () => {
     params.logoutConfiguration = { logoutUri: '/' };
     expect(() => new Authenticator(params)).toThrow('logoutUri');
   });
+
+  test('should create authenticator with valid language', () => {
+    params.language = 'ja';
+    expect(typeof new Authenticator(params)).toBe('object');
+  });
+
+  test('should create authenticator without language parameter', () => {
+    expect(typeof new Authenticator(params)).toBe('object');
+  });
+
+  test('should create authenticator with all supported languages', () => {
+    const supportedLanguages = ['de', 'en', 'es', 'fr', 'id', 'it', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'];
+
+    supportedLanguages.forEach(lang => {
+      params.language = lang;
+      expect(() => new Authenticator(params)).not.toThrow();
+    });
+  });
+
+  test('should throw error for invalid language', () => {
+    params.language = 'invalid-lang';
+    expect(() => new Authenticator(params)).toThrow('Expected params.language to be one of: de, en, es, fr, id, it, ja, ko, pt-BR, zh-CN, zh-TW');
+  });
+
+  test('should throw error for empty string language', () => {
+    params.language = '';
+    expect(() => new Authenticator(params)).toThrow('Expected params.language to be one of: de, en, es, fr, id, it, ja, ko, pt-BR, zh-CN, zh-TW');
+  });
+
+  test('should throw error for non-string language', () => {
+    params.language = 123; // number instead of string
+    expect(() => new Authenticator(params)).toThrow('Expected params.language to be one of: de, en, es, fr, id, it, ja, ko, pt-BR, zh-CN, zh-TW');
+  });
 });
 
 describe('handle', () => {
