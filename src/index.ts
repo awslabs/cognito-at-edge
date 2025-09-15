@@ -538,7 +538,7 @@ export class Authenticator {
       state = csrfTokens.state;
     }
 
-    const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
+    const userPoolUrl = `https://${this._userPoolDomain}/login?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
 
     this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
   
