@@ -676,13 +676,29 @@ describe('handle', () => {
     authenticator._fetchTokensFromRefreshToken.mockResolvedValueOnce(tokenData);
     authenticator._getRedirectResponse.mockReturnValueOnce({ response: 'toto' });
     const request = getCloudfrontRequest();
-    request.Records[0].cf.request.querystring = 'code=54fe5f4e&state=/lol';
+    request.Records[0].cf.request.querystring = '';
     return expect(authenticator.handle(request)).resolves.toEqual({ response: 'toto' })
       .then(() => {
         expect(authenticator._getTokensFromCookie).toHaveBeenCalled();
         expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
         expect(authenticator._fetchTokensFromRefreshToken).toHaveBeenCalled();
         expect(authenticator._getRedirectResponse).toHaveBeenCalledWith(tokenData, 'd111111abcdef8.cloudfront.net', '/lol');
+      });
+  });
+
+  test('should maintain querystring while refresh token flow', () => {
+    authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.reject({}));
+    authenticator._getTokensFromCookie.mockReturnValueOnce({refreshToken: tokenData.refresh_token});
+    authenticator._fetchTokensFromRefreshToken.mockResolvedValueOnce(tokenData);
+    authenticator._getRedirectResponse.mockReturnValueOnce({ response: 'toto' });
+    const request = getCloudfrontRequest();
+    request.Records[0].cf.request.querystring = 'foo=bar';
+    return expect(authenticator.handle(request)).resolves.toEqual({ response: 'toto' })
+      .then(() => {
+        expect(authenticator._getTokensFromCookie).toHaveBeenCalled();
+        expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
+        expect(authenticator._fetchTokensFromRefreshToken).toHaveBeenCalled();
+        expect(authenticator._getRedirectResponse).toHaveBeenCalledWith(tokenData, 'd111111abcdef8.cloudfront.net', '/lol?foo=bar');
       });
   });
 
@@ -767,7 +783,7 @@ describe('handle', () => {
         headers: {
           'location': [{
             key: 'Location',
-            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3F%3Fparam%3D1',
+            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3Fparam%3D1',
           }],
           'cache-control': [{
             key: 'Cache-Control',
@@ -801,7 +817,7 @@ describe('handle', () => {
         headers: {
           'location': [{
             key: 'Location',
-            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net/custom/login/path&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3F%3Fparam%3D1',
+            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net/custom/login/path&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3Fparam%3D1',
           }],
           'cache-control': [{
             key: 'Cache-Control',
@@ -1159,7 +1175,7 @@ const getCloudfrontRequest = () => ({
             "inputTruncated": false
           },
           "clientIp": "2001:0db8:85a3:0:0:8a2e:0370:7334",
-          "querystring": "?param=1",
+          "querystring": "param=1",
           "uri": "/lol",
           "method": "GET",
           "headers": {
