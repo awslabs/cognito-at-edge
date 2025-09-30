@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.5.4](https://github.com/awslabs/cognito-at-edge/tree/1.5.4) (2025-09-30)
+
+[Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.5.3...1.5.4)
+
+**Merged pull requests:**
+
+- Update pino to version 9.12.0 [\#116](https://github.com/awslabs/cognito-at-edge/pull/116) ([komiya-atsushi](https://github.com/komiya-atsushi))
+- chore: bump axios from 1.11.0 to 1.12.0 [\#115](https://github.com/awslabs/cognito-at-edge/pull/115) ([dependabot[bot]](https://github.com/apps/dependabot))
+- chore: upgrade vulnerable dependencies [\#113](https://github.com/awslabs/cognito-at-edge/pull/113) ([jeandek](https://github.com/jeandek))
+- Upgrade dependencies [\#104](https://github.com/awslabs/cognito-at-edge/pull/104) ([borisfba](https://github.com/borisfba))
+
 ## [1.5.3](https://github.com/awslabs/cognito-at-edge/tree/1.5.3) (2024-08-14)
 
 [Full Changelog](https://github.com/awslabs/cognito-at-edge/compare/1.5.2...1.5.3)
