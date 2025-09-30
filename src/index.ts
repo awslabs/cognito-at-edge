@@ -1,7 +1,7 @@
 import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import type { CloudFrontRequest, CloudFrontRequestEvent, CloudFrontResultResponse } from 'aws-lambda';
 import axios from 'axios';
-import pino from 'pino';
+import { pino } from 'pino';
 import { parse, stringify } from 'querystring';
 import { CookieAttributes, CookieSettingsOverrides, CookieType, Cookies, SAME_SITE_VALUES, SameSite, getCookieDomain } from './util/cookie';
 import { CSRFTokens, NONCE_COOKIE_NAME_SUFFIX, NONCE_HMAC_COOKIE_NAME_SUFFIX, PKCE_COOKIE_NAME_SUFFIX, generateCSRFTokens, signNonce, urlSafe } from './util/csrf';
