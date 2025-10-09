@@ -272,10 +272,10 @@ export class Authenticator {
    * Create a Lambda@Edge redirection response to set the tokens on the user's browser cookies.
    * @param  {Object} tokens   Cognito User Pool tokens.
    * @param  {String} domain   Website domain.
-   * @param  {String} location Path to redirection.
+   * @param  {String} path     Relative path to the requested object.
    * @return Lambda@Edge response.
    */
-  async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontResultResponse> {
+  async _getRedirectResponse(tokens: Tokens, domain: string, path: string): Promise<CloudFrontResultResponse> {
     const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
     const username = decoded['cognito:username'] as string;
     const usernameBase = `${this._cookieBase}.${username}`;
@@ -313,7 +313,7 @@ export class Authenticator {
       headers: {
         'location': [{
           key: 'Location',
-          value: location,
+          value: 'https://' + domain + (path.startsWith('/') ? '' : '/') + path,
         }],
         'cache-control': [{
           key: 'Cache-Control',
@@ -538,7 +538,17 @@ export class Authenticator {
       state = csrfTokens.state;
     }
 
-    const userPoolUrl = `https://${this._userPoolDomain}/authorize?redirect_uri=${redirectURI}&response_type=code&client_id=${this._userPoolAppId}&state=${state}`;
+    const params = new URLSearchParams({
+      redirect_uri: redirectURI,
+      response_type: 'code',
+      client_id: this._userPoolAppId,
+    });
+
+    if (state) {
+      params.append('state', state);
+    }
+       
+    const userPoolUrl = `https://${this._userPoolDomain}/authorize?${params}`;
 
     this._logger.debug(`Redirecting user to Cognito User Pool URL ${userPoolUrl}`);
   
