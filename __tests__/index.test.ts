@@ -48,10 +48,12 @@ describe('private functions', () => {
 
   test('should getRedirectResponse', async () => {
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     const domain = 'example.com';
     const path = '/test';
     jest.spyOn(authenticator._jwtVerifier, 'verify');
     authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
+    authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'access', 'scope': scope }));
 
     const response = await authenticator._getRedirectResponse({refreshToken: tokenData.refresh_token, accessToken: tokenData.access_token, idToken: tokenData.id_token}, domain, path);
     expect(response).toMatchObject({
@@ -70,7 +72,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure`},
     ]));
-    expect(authenticator._jwtVerifier.verify).toHaveBeenCalled();
+    expect(authenticator._jwtVerifier.verify).toHaveBeenCalledTimes(2);
   });
 
   test('should not return cookie domain', async () => {
@@ -85,10 +87,12 @@ describe('private functions', () => {
     authenticatorWithNoCookieDomain._jwtVerifier.cacheJwks(jwksData);
 
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     const domain = 'example.com';
     const path = '/test';
     jest.spyOn(authenticatorWithNoCookieDomain._jwtVerifier, 'verify');
     authenticatorWithNoCookieDomain._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
+    authenticatorWithNoCookieDomain._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'access', 'scope': scope }));
 
     const response = await authenticatorWithNoCookieDomain._getRedirectResponse({'accessToken': tokenData.access_token, 'idToken': tokenData.id_token, 'refreshToken': tokenData.refresh_token}, domain, path);
     expect(response).toMatchObject({
@@ -107,7 +111,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Expires=${DATE.toUTCString()}; Secure`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Expires=${DATE.toUTCString()}; Secure`},
     ]));
-    expect(authenticatorWithNoCookieDomain._jwtVerifier.verify).toHaveBeenCalled();
+    expect(authenticatorWithNoCookieDomain._jwtVerifier.verify).toHaveBeenCalledTimes(2);
   });
 
   test('should set HttpOnly on cookies', async () => {
@@ -123,10 +127,12 @@ describe('private functions', () => {
     authenticatorWithHttpOnly._jwtVerifier.cacheJwks(jwksData);
 
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     const domain = 'example.com';
     const path = '/test';
     jest.spyOn(authenticatorWithHttpOnly._jwtVerifier, 'verify');
     authenticatorWithHttpOnly._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
+    authenticatorWithHttpOnly._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'access', 'scope': scope }));
 
     const response = await authenticatorWithHttpOnly._getRedirectResponse({ accessToken: tokenData.access_token, idToken: tokenData.id_token, refreshToken: tokenData.refresh_token }, domain, path);
     expect(response).toMatchObject({
@@ -145,7 +151,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`},
     ]));
-    expect(authenticatorWithHttpOnly._jwtVerifier.verify).toHaveBeenCalled();
+    expect(authenticatorWithHttpOnly._jwtVerifier.verify).toHaveBeenCalledTimes(2);
   });
 
   test('should set SameSite on cookies', async () => {
@@ -162,10 +168,12 @@ describe('private functions', () => {
     authenticatorWithSameSite._jwtVerifier.cacheJwks(jwksData);
 
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     const domain = 'example.com';
     const path = '/test';
     jest.spyOn(authenticatorWithSameSite._jwtVerifier, 'verify');
     authenticatorWithSameSite._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
+    authenticatorWithSameSite._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'access', 'scope': scope }));
 
     const response = await authenticatorWithSameSite._getRedirectResponse({ accessToken: tokenData.access_token, idToken: tokenData.id_token, refreshToken: tokenData.refresh_token }, domain, path);
     expect(response).toMatchObject({
@@ -184,7 +192,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly; SameSite=Strict`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly; SameSite=Strict`},
     ]));
-    expect(authenticatorWithSameSite._jwtVerifier.verify).toHaveBeenCalled();
+    expect(authenticatorWithSameSite._jwtVerifier.verify).toHaveBeenCalledTimes(2);
   });
 
   test('should set Path on cookies', async () => {
@@ -201,10 +209,12 @@ describe('private functions', () => {
     authenticatorWithPath._jwtVerifier.cacheJwks(jwksData);
 
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     const domain = 'example.com';
     const path = '/test';
     jest.spyOn(authenticatorWithPath._jwtVerifier, 'verify');
     authenticatorWithPath._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
+    authenticatorWithPath._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'access', 'scope': scope }));
 
     const response = await authenticatorWithPath._getRedirectResponse({ accessToken: tokenData.access_token, idToken: tokenData.id_token, refreshToken: tokenData.refresh_token }, domain, path);
     expect(response).toMatchObject({
@@ -223,7 +233,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`},
     ]));
-    expect(authenticatorWithPath._jwtVerifier.verify).toHaveBeenCalled();
+    expect(authenticatorWithPath._jwtVerifier.verify).toHaveBeenCalledTimes(2);
   });
 
   test('should set csrf tokens when the feature is enabled', async () => {
@@ -243,10 +253,12 @@ describe('private functions', () => {
     authenticatorWithPath._jwtVerifier.cacheJwks(jwksData);
 
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     const domain = 'example.com';
     const path = '/test';
     jest.spyOn(authenticatorWithPath._jwtVerifier, 'verify');
     authenticatorWithPath._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
+    authenticatorWithPath._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'access', 'scope': scope }));
 
     const response = await authenticatorWithPath._getRedirectResponse({ accessToken: tokenData.access_token, idToken: tokenData.id_token, refreshToken: tokenData.refresh_token }, domain, path);
     expect(response).toMatchObject({
@@ -268,7 +280,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`},
     ]));
-    expect(authenticatorWithPath._jwtVerifier.verify).toHaveBeenCalled();
+    expect(authenticatorWithPath._jwtVerifier.verify).toHaveBeenCalledTimes(2);
   });
 
   test('should use overriden cookie settings', async () => {
@@ -297,10 +309,12 @@ describe('private functions', () => {
     authenticatorWithPath._jwtVerifier.cacheJwks(jwksData);
 
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     const domain = 'example.com';
     const path = '/test';
     jest.spyOn(authenticatorWithPath._jwtVerifier, 'verify');
     authenticatorWithPath._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
+    authenticatorWithPath._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'access', 'scope': scope }));
 
     const response = await authenticatorWithPath._getRedirectResponse({ accessToken: tokenData.access_token, idToken: tokenData.id_token, refreshToken: tokenData.refresh_token }, domain, path);
     expect(response).toMatchObject({
@@ -322,7 +336,7 @@ describe('private functions', () => {
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`},
       {key: 'Set-Cookie', value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`},
     ]));
-    expect(authenticatorWithPath._jwtVerifier.verify).toHaveBeenCalled();
+    expect(authenticatorWithPath._jwtVerifier.verify).toHaveBeenCalledTimes(2);
   });
 
   test('should getIdTokenFromCookie', () => {
@@ -1053,6 +1067,7 @@ describe('handleRefreshToken', () => {
 
   test('should refresh tokens successfully', async () => {
     const username = 'toto';
+    const scope = 'phone email profile openid aws.cognito.signin.user.admin';
     authenticator._getTokensFromCookie.mockReturnValueOnce({ refreshToken: tokenData.refresh_token });
     authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': username }));
     authenticator._fetchTokensFromRefreshToken.mockReturnValueOnce(Promise.resolve({

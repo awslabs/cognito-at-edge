@@ -82,7 +82,6 @@ export class Authenticator {
     this._jwtVerifier = CognitoJwtVerifier.create({
       userPoolId: params.userPoolId,
       clientId: params.userPoolAppId,
-      tokenUse: 'id',
     });
     this._csrfProtection = params.csrfProtection;
     this._logoutConfiguration = params.logoutConfiguration;
@@ -276,8 +275,10 @@ export class Authenticator {
    * @return Lambda@Edge response.
    */
   async _getRedirectResponse(tokens: Tokens, domain: string, location: string): Promise<CloudFrontResultResponse> {
-    const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
-    const username = decoded['cognito:username'] as string;
+    const decodedIdToken = await this._jwtVerifier.verify(tokens.idToken as string, { tokenUse: 'id' });
+    const decodedAccessToken = await this._jwtVerifier.verify(tokens.accessToken as string, {tokenUse: 'access' });
+    const username = decodedIdToken['cognito:username'] as string;
+    const scopes = decodedAccessToken['scope'] as string;
     const usernameBase = `${this._cookieBase}.${username}`;
     const cookieDomain = getCookieDomain(domain, this._disableCookieDomain, this._cookieDomain);
     const cookieAttributes: CookieAttributes = {
@@ -292,7 +293,7 @@ export class Authenticator {
       Cookies.serialize(`${usernameBase}.accessToken`, tokens.accessToken as string, this._getOverridenCookieAttributes(cookieAttributes, 'accessToken')),
       Cookies.serialize(`${usernameBase}.idToken`, tokens.idToken as string, this._getOverridenCookieAttributes(cookieAttributes, 'idToken')),
       ...(tokens.refreshToken ? [Cookies.serialize(`${usernameBase}.refreshToken`, tokens.refreshToken, this._getOverridenCookieAttributes(cookieAttributes, 'refreshToken'))] : []),
-      Cookies.serialize(`${usernameBase}.tokenScopesString`, 'phone email profile openid aws.cognito.signin.user.admin', cookieAttributes),
+      Cookies.serialize(`${usernameBase}.tokenScopesString`, scopes, cookieAttributes),
       Cookies.serialize(`${this._cookieBase}.LastAuthUser`, username, cookieAttributes),
     ];
 
@@ -468,7 +469,7 @@ export class Authenticator {
 
     let responseCookies: string[] = [];
     try {
-      const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
+      const decoded = await this._jwtVerifier.verify(tokens.idToken as string, { tokenUse: 'id' });
       const username = decoded['cognito:username'] as string;
       this._logger.info({ msg: 'Token verified. Clearing cookies...', idToken: tokens.idToken, username });
 
@@ -609,7 +610,7 @@ export class Authenticator {
       }
       try {
         this._logger.debug({ msg: 'Verifying token...', tokens });
-        const user = await this._jwtVerifier.verify(tokens.idToken as string);
+        const user = await this._jwtVerifier.verify(tokens.idToken as string, { tokenUse: 'id' });
         this._logger.info({ msg: 'Forwarding request', path: request.uri, user });
         return request;
       } catch (err) {
@@ -659,7 +660,7 @@ export class Authenticator {
       const tokens = this._getTokensFromCookie(request.headers.cookie);
 
       this._logger.debug({ msg: 'Verifying token...', tokens });
-      const user = await this._jwtVerifier.verify(tokens.idToken as string);
+      const user = await this._jwtVerifier.verify(tokens.idToken as string, { tokenUse: 'id' });
 
       this._logger.info({ msg: 'Redirecting user to', path: redirectURI, user });
       return {
@@ -744,7 +745,7 @@ export class Authenticator {
       let tokens = this._getTokensFromCookie(request.headers.cookie);
 
       this._logger.debug({ msg: 'Verifying token...', tokens });
-      const user = await this._jwtVerifier.verify(tokens.idToken as string);
+      const user = await this._jwtVerifier.verify(tokens.idToken as string, { tokenUse: 'id' });
 
       this._logger.debug({ msg: 'Refreshing tokens...', tokens, user });
       tokens = await this._fetchTokensFromRefreshToken(redirectURI, tokens.refreshToken as string);
