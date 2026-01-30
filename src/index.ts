@@ -642,7 +642,13 @@ export class Authenticator {
       const requestParams = parse(request.querystring);
       if (requestParams.code) {
         return this._fetchTokensFromCode(redirectURI, requestParams.code as string)
-          .then(tokens => this._getRedirectResponse(tokens, cfDomain, this._getRedirectUriFromState(requestParams.state as string)));
+          .then(tokens => this._getRedirectResponse(tokens, cfDomain, this._getRedirectUriFromState(requestParams.state as string)))
+          .catch(err => {
+            if (err.response?.data?.error === "invalid_grant") {
+              return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
+            }
+            throw err;
+          });
       } else {
         return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
       }
