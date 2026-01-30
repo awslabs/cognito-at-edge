@@ -5,6 +5,8 @@ import { pino } from 'pino';
 import { parse, stringify } from 'querystring';
 import { CookieAttributes, CookieSettingsOverrides, CookieType, Cookies, SAME_SITE_VALUES, SameSite, getCookieDomain } from './util/cookie';
 import { CSRFTokens, NONCE_COOKIE_NAME_SUFFIX, NONCE_HMAC_COOKIE_NAME_SUFFIX, PKCE_COOKIE_NAME_SUFFIX, generateCSRFTokens, signNonce, urlSafe } from './util/csrf';
+import { SimpleJsonFetcher } from 'aws-jwt-verify/https';
+import { SimpleJwksCache } from 'aws-jwt-verify/jwk';
 
 export interface AuthenticatorParams {
   region: string;
@@ -25,6 +27,7 @@ export interface AuthenticatorParams {
   csrfProtection?: {
     nonceSigningSecret: string;
   },
+  jwtVerifierFetcherRequestOptions?: SimpleJsonFetcher['defaultRequestOptions']
 }
 
 interface LogoutConfiguration {
@@ -59,6 +62,7 @@ export class Authenticator {
   _cookieSettingsOverrides?: CookieSettingsOverrides;
   _logger;
   _jwtVerifier;
+  _jwtVerifierFetcherRequestOptions?: AuthenticatorParams['jwtVerifierFetcherRequestOptions']
 
   constructor(params: AuthenticatorParams) {
     this._verifyParams(params);
@@ -83,7 +87,15 @@ export class Authenticator {
       userPoolId: params.userPoolId,
       clientId: params.userPoolAppId,
       tokenUse: 'id',
-    });
+    },
+    {
+      jwksCache: new SimpleJwksCache({
+        fetcher: new SimpleJsonFetcher({
+          defaultRequestOptions: this._jwtVerifierFetcherRequestOptions,
+        }),
+      }),
+    }
+    );
     this._csrfProtection = params.csrfProtection;
     this._logoutConfiguration = params.logoutConfiguration;
     this._parseAuthPath = (params.parseAuthPath || '').replace(/^\//, '');
@@ -801,4 +813,3 @@ export class Authenticator {
     }
   }
 }
-
