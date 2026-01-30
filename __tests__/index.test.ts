@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import axios from 'axios';
 
@@ -59,7 +60,7 @@ describe('private functions', () => {
       headers: {
         location: [{
           key: 'Location',
-          value: path,
+          value: 'https://'+domain+path,
         }],
       },
     });
@@ -96,7 +97,7 @@ describe('private functions', () => {
       headers: {
         location: [{
           key: 'Location',
-          value: path,
+          value: 'https://'+domain+path,
         }],
       },
     });
@@ -134,7 +135,7 @@ describe('private functions', () => {
       headers: {
         location: [{
           key: 'Location',
-          value: path,
+          value: 'https://'+domain+path,
         }],
       },
     });
@@ -173,7 +174,7 @@ describe('private functions', () => {
       headers: {
         location: [{
           key: 'Location',
-          value: path,
+          value: 'https://'+domain+path,
         }],
       },
     });
@@ -212,7 +213,7 @@ describe('private functions', () => {
       headers: {
         location: [{
           key: 'Location',
-          value: path,
+          value: 'https://'+domain+path,
         }],
       },
     });
@@ -254,7 +255,7 @@ describe('private functions', () => {
       headers: {
         location: [{
           key: 'Location',
-          value: path,
+          value: 'https://'+domain+path,
         }],
       },
     });
@@ -308,7 +309,7 @@ describe('private functions', () => {
       headers: {
         location: [{
           key: 'Location',
-          value: path,
+          value: 'https://'+domain+path,
         }],
       },
     });
@@ -767,7 +768,7 @@ describe('handle', () => {
         headers: {
           'location': [{
             key: 'Location',
-            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3F%3Fparam%3D1',
+            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
           }],
           'cache-control': [{
             key: 'Cache-Control',
@@ -801,7 +802,7 @@ describe('handle', () => {
         headers: {
           'location': [{
             key: 'Location',
-            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https://d111111abcdef8.cloudfront.net/custom/login/path&response_type=code&client_id=123456789qwertyuiop987abcd&state=/lol%3F%3Fparam%3D1',
+            value: 'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net%2Fcustom%2Flogin%2Fpath&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
           }],
           'cache-control': [{
             key: 'Cache-Control',
@@ -896,6 +897,60 @@ describe('handle', () => {
         expect(authenticator._revokeTokens).not.toHaveBeenCalled();
         expect(authenticator._clearCookies).toHaveBeenCalled();
       });
+  });
+
+  describe('_getRedirectResponse', () => {
+    test('should handle expected case (relative path with / prefix)', async () => {      
+      jest.spyOn(authenticator._jwtVerifier, 'verify');
+      authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': 'toto' }));
+      
+      const response = await authenticator._getRedirectResponse(
+        {refreshToken: tokenData.refresh_token, accessToken: tokenData.access_token, idToken: tokenData.id_token},
+        'example.com',
+        '/subpath/1'
+      );
+      
+      expect(response.headers.location[0].value).toEqual('https://example.com/subpath/1');
+    });
+
+    test('should handle case where relative path is missing / prefix)', async () => {      
+      jest.spyOn(authenticator._jwtVerifier, 'verify');
+      authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': 'toto' }));
+      
+      const response = await authenticator._getRedirectResponse(
+        {refreshToken: tokenData.refresh_token, accessToken: tokenData.access_token, idToken: tokenData.id_token},
+        'example.com',
+        'subpath/2'
+      );
+      
+      expect(response.headers.location[0].value).toEqual('https://example.com/subpath/2');
+    });
+
+    test('should redirect to a subpath of the CloudFront domain even if state contains a malicious URL (inc. protocol)', async () => {      
+      jest.spyOn(authenticator._jwtVerifier, 'verify');
+      authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': 'toto' }));
+      
+      const response = await authenticator._getRedirectResponse(
+        {refreshToken: tokenData.refresh_token, accessToken: tokenData.access_token, idToken: tokenData.id_token},
+        'example.com',
+        'https://malicious-site.com/phishing'
+      );
+      
+      expect(response.headers.location[0].value).toEqual('https://example.com/https://malicious-site.com/phishing');
+    });
+
+    test('should redirect to a subpath of the CloudFront domain even if state contains a malicious URL (// no protocol)', async () => {     
+      jest.spyOn(authenticator._jwtVerifier, 'verify');
+      authenticator._jwtVerifier.verify.mockReturnValueOnce(Promise.resolve({ token_use: 'id', 'cognito:username': 'toto' }));
+      
+      const response = await authenticator._getRedirectResponse(
+        {refreshToken: tokenData.refresh_token, accessToken: tokenData.access_token, idToken: tokenData.id_token},
+        'example.com',
+        '//malicious-site.com/phishing'
+      );
+      
+      expect(response.headers.location[0].value).toEqual('https://example.com//malicious-site.com/phishing');
+    });
   });
 });
 
