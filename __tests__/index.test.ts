@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import axios from 'axios';
 
@@ -950,7 +951,7 @@ describe('handle', () => {
       
       expect(response.headers.location[0].value).toEqual('https://example.com//malicious-site.com/phishing');
     });
-  })
+  });
 });
 
 describe('handleSignIn', () => {
