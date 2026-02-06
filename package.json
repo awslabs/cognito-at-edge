@@ -15,8 +15,9 @@
   ],
   "scripts": {
     "build": "tsc",
-    "lint": "eslint .",
-    "test": "jest --coverage"
+    "lint": "eslint --cache .",
+    "test": "jest --coverage",
+    "prepare": "husky"
   },
   "dependencies": {
     "aws-jwt-verify": "^2.1.1",
@@ -24,14 +25,21 @@
     "pino": "^9.12.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.89",
-    "@types/jest": "^27.4.0",
-    "@typescript-eslint/eslint-plugin": "^5.9.1",
-    "@typescript-eslint/parser": "^5.9.1",
-    "eslint": "^7.32.0",
-    "jest": "^27.4.7",
-    "ts-jest": "^27.1.2",
-    "typescript": "^4.5.4"
+    "@eslint/js": "^9.39.2",
+    "@types/aws-lambda": "^8.10.160",
+    "@types/jest": "^30.0.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "globals": "^17.3.0",
+    "husky": "^9.1.7",
+    "jest": "^30.2.0",
+    "jiti": "^2.6.1",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
   },
   "engines": {
     "node": ">=10.0.0"
@@ -45,5 +53,12 @@
     "edge",
     "private",
     "website"
-  ]
+  ],
+  "lint-staged": {
+    "*.{js,ts,mts}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "!(**/*.{js,jsx})": "prettier --write --ignore-unknown"
+  }
 }
