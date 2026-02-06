@@ -1,12 +1,12 @@
 module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.test.json',
-    },
-  },
-  moduleNameMapper: {
-    '^axios$': 'axios/dist/node/axios.cjs',
-  },
+	preset: 'ts-jest',
+	testEnvironment: 'node',
+	globals: {
+		'ts-jest': {
+			tsconfig: 'tsconfig.test.json',
+		},
+	},
+	moduleNameMapper: {
+		'^axios$': 'axios/dist/node/axios.cjs',
+	},
 };
