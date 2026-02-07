@@ -57,7 +57,7 @@ export function generateSecret(
 	allowedCharacters: string,
 	secretLength: number,
 ) {
-	return [...new Array(secretLength)]
+	return [...new Array<unknown>(secretLength)]
 		.map(() => allowedCharacters[randomInt(0, allowedCharacters.length)])
 		.join('');
 }

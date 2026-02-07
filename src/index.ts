@@ -11,7 +11,8 @@ import {
 	CookieAttributes,
 	CookieSettingsOverrides,
 	CookieType,
-	Cookies,
+	parseCookies,
+	serializeCookie,
 	SAME_SITE_VALUES,
 	SameSite,
 	getCookieDomain,
@@ -56,6 +57,8 @@ interface Tokens {
 	accessToken?: string;
 	idToken?: string;
 	refreshToken?: string;
+	token_type?: 'Bearer';
+	expires_in?: number;
 }
 
 export class Authenticator {
@@ -191,7 +194,11 @@ export class Authenticator {
 			code,
 		});
 		return axios
-			.request(request)
+			.request<{
+				id_token: string;
+				access_token: string;
+				refresh_token: string;
+			}>(request)
 			.then((resp) => {
 				this._logger.debug({ msg: 'Fetched tokens', tokens: resp.data });
 				return {
@@ -200,7 +207,7 @@ export class Authenticator {
 					refreshToken: resp.data.refresh_token,
 				};
 			})
-			.catch((err) => {
+			.catch((err: unknown) => {
 				this._logger.error({
 					msg: 'Unable to fetch tokens from grant code',
 					request,
@@ -241,7 +248,10 @@ export class Authenticator {
 			refreshToken,
 		});
 		return axios
-			.request(request)
+			.request<{
+				id_token: string;
+				access_token: string;
+			}>(request)
 			.then((resp) => {
 				this._logger.debug({ msg: 'Fetched tokens', tokens: resp.data });
 				return {
@@ -249,7 +259,7 @@ export class Authenticator {
 					accessToken: resp.data.access_token,
 				};
 			})
-			.catch((err) => {
+			.catch((err: unknown) => {
 				this._logger.error({
 					msg: 'Unable to fetch tokens from refreshToken',
 					request,
@@ -276,8 +286,9 @@ export class Authenticator {
 		}
 
 		const requestParams = parse(request.querystring);
-		const requestCookies =
-			request.headers.cookie?.flatMap((h) => Cookies.parse(h.value)) || [];
+		const requestCookies = request.headers.cookie.flatMap((h) =>
+			parseCookies(h.value),
+		);
 		this._logger.debug({ msg: 'Validating CSRF Cookies', requestCookies });
 
 		const parsedState = JSON.parse(
@@ -285,7 +296,7 @@ export class Authenticator {
 				urlSafe.parse(requestParams.state as string),
 				'base64',
 			).toString(),
-		);
+		) as { nonce?: string };
 
 		const {
 			nonce: originalNonce,
@@ -368,7 +379,7 @@ export class Authenticator {
 		path: string,
 	): Promise<CloudFrontResultResponse> {
 		const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
-		const username = decoded['cognito:username'] as string;
+		const username = decoded['cognito:username'];
 		const usernameBase = `${this._cookieBase}.${username}`;
 		const cookieDomain = getCookieDomain(
 			domain,
@@ -384,19 +395,19 @@ export class Authenticator {
 			path: this._cookiePath,
 		};
 		const cookies = [
-			Cookies.serialize(
+			serializeCookie(
 				`${usernameBase}.accessToken`,
 				tokens.accessToken as string,
 				this._getOverridenCookieAttributes(cookieAttributes, 'accessToken'),
 			),
-			Cookies.serialize(
+			serializeCookie(
 				`${usernameBase}.idToken`,
 				tokens.idToken as string,
 				this._getOverridenCookieAttributes(cookieAttributes, 'idToken'),
 			),
 			...(tokens.refreshToken
 				? [
-						Cookies.serialize(
+						serializeCookie(
 							`${usernameBase}.refreshToken`,
 							tokens.refreshToken,
 							this._getOverridenCookieAttributes(
@@ -406,12 +417,12 @@ export class Authenticator {
 						),
 					]
 				: []),
-			Cookies.serialize(
+			serializeCookie(
 				`${usernameBase}.tokenScopesString`,
 				'phone email profile openid aws.cognito.signin.user.admin',
 				cookieAttributes,
 			),
-			Cookies.serialize(
+			serializeCookie(
 				`${this._cookieBase}.LastAuthUser`,
 				username,
 				cookieAttributes,
@@ -428,17 +439,17 @@ export class Authenticator {
 				expires: new Date(),
 			};
 			cookies.push(
-				Cookies.serialize(
+				serializeCookie(
 					`${this._cookieBase}.${PKCE_COOKIE_NAME_SUFFIX}`,
 					'',
 					csrfCookieAttributes,
 				),
-				Cookies.serialize(
+				serializeCookie(
 					`${this._cookieBase}.${NONCE_COOKIE_NAME_SUFFIX}`,
 					'',
 					csrfCookieAttributes,
 				),
-				Cookies.serialize(
+				serializeCookie(
 					`${this._cookieBase}.${NONCE_HMAC_COOKIE_NAME_SUFFIX}`,
 					'',
 					csrfCookieAttributes,
@@ -497,7 +508,7 @@ export class Authenticator {
 			cookieHeaders,
 		});
 
-		const cookies = cookieHeaders.flatMap((h) => Cookies.parse(h.value));
+		const cookies = cookieHeaders.flatMap((h) => parseCookies(h.value));
 
 		const tokenCookieNamePrefix = `${this._cookieBase}.`;
 		const idTokenCookieNamePostfix = '.idToken';
@@ -552,8 +563,8 @@ export class Authenticator {
 			cookieHeaders,
 		});
 
-		const cookies = cookieHeaders.flatMap((h) => Cookies.parse(h.value));
-		const csrfTokens: CSRFTokens = cookies.reduce((tokens, { name, value }) => {
+		const cookies = cookieHeaders.flatMap((h) => parseCookies(h.value));
+		const csrfTokens = cookies.reduce<CSRFTokens>((tokens, { name, value }) => {
 			if (name.startsWith(this._cookieBase)) {
 				[
 					NONCE_COOKIE_NAME_SUFFIX,
@@ -566,7 +577,7 @@ export class Authenticator {
 				});
 			}
 			return tokens;
-		}, {} as CSRFTokens);
+		}, {});
 
 		this._logger.debug({ msg: 'Found CSRF tokens in cookie', csrfTokens });
 		return csrfTokens;
@@ -584,7 +595,7 @@ export class Authenticator {
 		if (this._csrfProtection) {
 			const parsedState = JSON.parse(
 				Buffer.from(urlSafe.parse(state), 'base64').toString(),
-			);
+			) as { redirect_uri: string; nonce?: string };
 			this._logger.debug({
 				msg: 'Parsed state param to extract redirect uri',
 				parsedState,
@@ -621,7 +632,7 @@ export class Authenticator {
 					refreshToken: tokens.refreshToken,
 				});
 			})
-			.catch((err) => {
+			.catch((err: unknown) => {
 				this._logger.error({
 					msg: 'Unable to revoke refreshToken',
 					request: revokeRequest,
@@ -661,7 +672,7 @@ export class Authenticator {
 		let responseCookies: string[] = [];
 		try {
 			const decoded = await this._jwtVerifier.verify(tokens.idToken as string);
-			const username = decoded['cognito:username'] as string;
+			const username = decoded['cognito:username'];
 			this._logger.info({
 				msg: 'Token verified. Clearing cookies...',
 				idToken: tokens.idToken,
@@ -670,38 +681,39 @@ export class Authenticator {
 
 			const usernameBase = `${this._cookieBase}.${username}`;
 			responseCookies = [
-				Cookies.serialize(`${usernameBase}.accessToken`, '', cookieAttributes),
-				Cookies.serialize(`${usernameBase}.idToken`, '', cookieAttributes),
+				serializeCookie(`${usernameBase}.accessToken`, '', cookieAttributes),
+				serializeCookie(`${usernameBase}.idToken`, '', cookieAttributes),
 				...(tokens.refreshToken
 					? [
-							Cookies.serialize(
+							serializeCookie(
 								`${usernameBase}.refreshToken`,
 								'',
 								cookieAttributes,
 							),
 						]
 					: []),
-				Cookies.serialize(
+				serializeCookie(
 					`${usernameBase}.tokenScopesString`,
 					'',
 					cookieAttributes,
 				),
-				Cookies.serialize(
+				serializeCookie(
 					`${this._cookieBase}.LastAuthUser`,
 					'',
 					cookieAttributes,
 				),
 			];
-		} catch (err) {
+		} catch (_err) {
 			this._logger.info({
 				msg: 'Unable to verify token. Inferring data from request cookies and clearing them...',
 				idToken: tokens.idToken,
 			});
-			const requestCookies =
-				request.headers.cookie?.flatMap((h) => Cookies.parse(h.value)) || [];
+			const requestCookies = request.headers.cookie.flatMap((h) =>
+				parseCookies(h.value),
+			);
 			for (const { name } of requestCookies) {
 				if (name.startsWith(this._cookieBase)) {
-					responseCookies.push(Cookies.serialize(name, '', cookieAttributes));
+					responseCookies.push(serializeCookie(name, '', cookieAttributes));
 				}
 			}
 		}
@@ -790,17 +802,17 @@ export class Authenticator {
 				path: this._cookiePath,
 			};
 			cookies = [
-				Cookies.serialize(
+				serializeCookie(
 					`${this._cookieBase}.${PKCE_COOKIE_NAME_SUFFIX}`,
 					csrfTokens.pkce || '',
 					cookieAttributes,
 				),
-				Cookies.serialize(
+				serializeCookie(
 					`${this._cookieBase}.${NONCE_COOKIE_NAME_SUFFIX}`,
 					csrfTokens.nonce || '',
 					cookieAttributes,
 				),
-				Cookies.serialize(
+				serializeCookie(
 					`${this._cookieBase}.${NONCE_HMAC_COOKIE_NAME_SUFFIX}`,
 					csrfTokens.nonceHmac || '',
 					cookieAttributes,
@@ -831,9 +843,10 @@ export class Authenticator {
 				],
 				...(cookies
 					? {
-							'set-cookie':
-								cookies &&
-								cookies.map((c) => ({ key: 'Set-Cookie', value: c })),
+							'set-cookie': cookies.map((c) => ({
+								key: 'Set-Cookie',
+								value: c,
+							})),
 						}
 					: {}),
 			},
@@ -872,7 +885,7 @@ export class Authenticator {
 				await this._revokeTokens(tokens);
 
 				this._logger.info({ msg: 'Revoked tokens. Clearing cookies', tokens });
-				return this._clearCookies(event, tokens);
+				return await this._clearCookies(event, tokens);
 			}
 			try {
 				this._logger.debug({ msg: 'Verifying token...', tokens });
@@ -1022,7 +1035,7 @@ export class Authenticator {
 					requestParams.state as string,
 				);
 
-				return this._getRedirectResponse(tokens, cfDomain, location);
+				return await this._getRedirectResponse(tokens, cfDomain, location);
 			} else {
 				this._logger.debug({ msg: 'Code param not found', requestParams });
 				throw new Error('OAuth code parameter not found');
@@ -1031,7 +1044,7 @@ export class Authenticator {
 			this._logger.debug({ msg: 'Unable to exchange code for tokens', err });
 			return {
 				status: '400',
-				body: `${err}`,
+				body: String(err),
 			};
 		}
 	}
@@ -1069,7 +1082,7 @@ export class Authenticator {
 			);
 
 			this._logger.debug({ msg: 'Refreshed tokens...', tokens, user });
-			return this._getRedirectResponse(tokens, cfDomain, redirectURI);
+			return await this._getRedirectResponse(tokens, cfDomain, redirectURI);
 		} catch (err) {
 			this._logger.debug("User isn't authenticated: %s", err);
 			return this._getRedirectToCognitoUserPoolResponse(
@@ -1109,8 +1122,8 @@ export class Authenticator {
 			await this._revokeTokens(tokens);
 
 			this._logger.info({ msg: 'Revoked tokens. Clearing cookies...', tokens });
-			return this._clearCookies(event, tokens);
-		} catch (err) {
+			return await this._clearCookies(event, tokens);
+		} catch (_err) {
 			this._logger.info({
 				msg: 'Unable to revoke tokens. Clearing cookies...',
 				path: redirectURI,
