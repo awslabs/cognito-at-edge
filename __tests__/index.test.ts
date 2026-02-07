@@ -1,8 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import axios from 'axios';
-
-jest.mock('axios');
-
 import {
 	CloudFrontRequest,
 	CloudFrontRequestEvent,
@@ -20,14 +17,7 @@ import type {
 	CognitoJwtVerifierMultiUserPool,
 } from 'aws-jwt-verify/cognito-verifier';
 
-const DATE = new Date('2017');
-// @ts-ignore
-global.Date = class extends Date {
-	constructor() {
-		super();
-		return DATE;
-	}
-};
+const TEST_DATE = new Date('2017-01-01T00:00:00.000Z');
 
 // Test helper class that exposes private methods for testing
 class TestAuthenticator extends Authenticator {
@@ -64,6 +54,9 @@ describe('private functions', () => {
 	let authenticator: TestAuthenticator;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(TEST_DATE);
+
 		authenticator = new TestAuthenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -76,11 +69,12 @@ describe('private functions', () => {
 	});
 
 	afterEach(() => {
+		jest.useRealTimers();
 		jest.restoreAllMocks();
 	});
 
 	test('should fetch token', () => {
-		axios.request = jest.fn().mockResolvedValue({ data: tokenData });
+		jest.spyOn(axios, 'request').mockResolvedValue({ data: tokenData });
 
 		return authenticator
 			._fetchTokensFromCode('htt://redirect', 'AUTH_CODE')
@@ -94,7 +88,9 @@ describe('private functions', () => {
 	});
 
 	test('should throw if unable to fetch token', () => {
-		axios.request = jest.fn().mockRejectedValue(new Error('Unexpected error'));
+		jest
+			.spyOn(axios, 'request')
+			.mockRejectedValue(new Error('Unexpected error'));
 		return expect(() =>
 			authenticator._fetchTokensFromCode('htt://redirect', 'AUTH_CODE'),
 		).rejects.toThrow();
@@ -108,6 +104,10 @@ describe('private functions', () => {
 			.spyOn(authenticator._jwtVerifier, 'verify')
 			.mockResolvedValueOnce(createMockCognitoPayload(username));
 
+		const expectedDefaultExpiration = new Date(TEST_DATE);
+		expectedDefaultExpiration.setDate(
+			expectedDefaultExpiration.getDate() + 365,
+		);
 		const response = await authenticator._getRedirectResponse(
 			{
 				refreshToken: tokenData.refresh_token,
@@ -132,23 +132,23 @@ describe('private functions', () => {
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 			]),
 		);
@@ -169,6 +169,10 @@ describe('private functions', () => {
 			'us-east-1_abcdef123',
 		);
 
+		const expectedDefaultExpiration = new Date(TEST_DATE);
+		expectedDefaultExpiration.setDate(
+			expectedDefaultExpiration.getDate() + 365,
+		);
 		const username = 'toto';
 		const domain = 'example.com';
 		const path = '/test';
@@ -200,23 +204,23 @@ describe('private functions', () => {
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 			]),
 		);
@@ -238,6 +242,10 @@ describe('private functions', () => {
 			'us-east-1_abcdef123',
 		);
 
+		const expectedDefaultExpiration = new Date(TEST_DATE);
+		expectedDefaultExpiration.setDate(
+			expectedDefaultExpiration.getDate() + 365,
+		);
 		const username = 'toto';
 		const domain = 'example.com';
 		const path = '/test';
@@ -269,23 +277,23 @@ describe('private functions', () => {
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 			]),
 		);
@@ -308,6 +316,10 @@ describe('private functions', () => {
 			'us-east-1_abcdef123',
 		);
 
+		const expectedDefaultExpiration = new Date(TEST_DATE);
+		expectedDefaultExpiration.setDate(
+			expectedDefaultExpiration.getDate() + 365,
+		);
 		const username = 'toto';
 		const domain = 'example.com';
 		const path = '/test';
@@ -339,23 +351,23 @@ describe('private functions', () => {
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${DATE.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly; SameSite=Strict`,
 				},
 			]),
 		);
@@ -373,11 +385,16 @@ describe('private functions', () => {
 			disableCookieDomain: false,
 			cookiePath,
 		});
+
 		authenticatorWithPath._jwtVerifier.cacheJwks(
 			jwksData,
 			'us-east-1_abcdef123',
 		);
 
+		const expectedDefaultExpiration = new Date(TEST_DATE);
+		expectedDefaultExpiration.setDate(
+			expectedDefaultExpiration.getDate() + 365,
+		);
 		const username = 'toto';
 		const domain = 'example.com';
 		const path = '/test';
@@ -409,23 +426,23 @@ describe('private functions', () => {
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 			]),
 		);
@@ -446,6 +463,11 @@ describe('private functions', () => {
 				nonceSigningSecret: 'foo-bar',
 			},
 		});
+		const expectedDefaultExpiration = new Date(TEST_DATE);
+		expectedDefaultExpiration.setDate(
+			expectedDefaultExpiration.getDate() + 365,
+		);
+
 		authenticatorWithPath._jwtVerifier.cacheJwks(
 			jwksData,
 			'us-east-1_abcdef123',
@@ -482,35 +504,35 @@ describe('private functions', () => {
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${PKCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${PKCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${TEST_DATE.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${TEST_DATE.toUTCString()}; Secure`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${TEST_DATE.toUTCString()}; Secure`,
 				},
 			]),
 		);
@@ -561,6 +583,17 @@ describe('private functions', () => {
 			domain,
 			path,
 		);
+
+		const expectedAccessTokenExpiration = new Date(TEST_DATE);
+		expectedAccessTokenExpiration.setDate(
+			expectedAccessTokenExpiration.getDate() + 2,
+		);
+
+		const expectedDefaultExpiration = new Date(TEST_DATE);
+		expectedDefaultExpiration.setDate(
+			expectedDefaultExpiration.getDate() + 365,
+		);
+
 		expect(response).toMatchObject({
 			status: '302',
 			headers: {
@@ -576,35 +609,35 @@ describe('private functions', () => {
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Path=/foo; Expires=${DATE.toUTCString()}; Secure; SameSite=Lax`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.accessToken=${tokenData.access_token}; Domain=${domain}; Path=/foo; Expires=${expectedAccessTokenExpiration.toUTCString()}; Secure; SameSite=Lax`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.refreshToken=${tokenData.refresh_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.tokenScopesString=phone%20email%20profile%20openid%20aws.cognito.signin.user.admin; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${username}.idToken=${tokenData.id_token}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.LastAuthUser=${username}; Domain=${domain}; Path=${cookiePath}; Expires=${expectedDefaultExpiration.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${PKCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${PKCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${TEST_DATE.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${TEST_DATE.toUTCString()}; Secure; HttpOnly`,
 				},
 				{
 					key: 'Set-Cookie',
-					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${DATE.toUTCString()}; Secure; HttpOnly`,
+					value: `CognitoIdentityServiceProvider.123456789qwertyuiop987abcd.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=; Path=${cookiePath}; Expires=${TEST_DATE.toUTCString()}; Secure; HttpOnly`,
 				},
 			]),
 		);
@@ -757,10 +790,12 @@ describe('private functions', () => {
 			);
 		});
 
-		it('should throw error when calculated Hmac is different than the one stored in the cookie', () => {
-			jest.mock('../src/util/csrf', () => ({
-				signNonce: () => 'nonce-hmac-value-different',
-			}));
+		it('should throw error when calculated Hmac is different than the one stored in the cookie', async () => {
+			const csrfModule = await import('../src/util/csrf');
+			const signNonceSpy = jest
+				.spyOn(csrfModule, 'signNonce')
+				.mockReturnValue('nonce-hmac-value-different');
+
 			const request = buildRequest(
 				{
 					[NONCE_COOKIE_NAME_SUFFIX]: 'nonce-value',
@@ -775,6 +810,8 @@ describe('private functions', () => {
 			expect(() => {
 				authenticator._validateCSRFCookies(request);
 			}).toThrow('Nonce signature mismatch!');
+
+			signNonceSpy.mockRestore();
 		});
 	});
 
@@ -818,7 +855,7 @@ describe('private functions', () => {
 		it('should clear cookies even if tokens cannot be verified', async () => {
 			jest
 				.spyOn(authenticator._jwtVerifier, 'verify')
-				.mockReturnValueOnce(Promise.reject(new Error()));
+				.mockRejectedValueOnce(new Error());
 			authenticator._jwtVerifier.cacheJwks(jwksData, 'us-east-1_abcdef123');
 			const tokens = {
 				idToken: tokenData.id_token,
@@ -1085,6 +1122,9 @@ describe('handle', () => {
 	let spyClearCookies: jest.SpyInstance;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(TEST_DATE);
+
 		authenticator = new TestAuthenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -1109,19 +1149,22 @@ describe('handle', () => {
 		spyJwtVerify = jest.spyOn(authenticator._jwtVerifier, 'verify');
 	});
 
+	afterEach(() => {
+		jest.useRealTimers();
+		jest.restoreAllMocks();
+	});
+
 	test('should forward request if authenticated', () => {
-		spyJwtVerify.mockReturnValueOnce(
-			Promise.resolve({
-				token_use: 'id',
-				sub: 'test-sub',
-				iss: 'test-iss',
-				exp: 0,
-				iat: 0,
-				auth_time: 0,
-				jti: 'test-jti',
-				origin_jti: 'test-origin-jti',
-			}),
-		);
+		spyJwtVerify.mockResolvedValueOnce({
+			token_use: 'id',
+			sub: 'test-sub',
+			iss: 'test-iss',
+			exp: 0,
+			iat: 0,
+			auth_time: 0,
+			jti: 'test-jti',
+			origin_jti: 'test-origin-jti',
+		});
 		return expect(authenticator.handle(getCloudfrontRequest()))
 			.resolves.toEqual(getCloudfrontRequest().Records[0].cf.request)
 			.then(() => {
@@ -1131,7 +1174,7 @@ describe('handle', () => {
 	});
 
 	test('should fetch with refresh token if available', () => {
-		spyJwtVerify.mockReturnValueOnce(Promise.reject(new Error()));
+		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
 		});
@@ -1156,13 +1199,11 @@ describe('handle', () => {
 	});
 
 	test('should redirect to cognito if refresh token is invalid', () => {
-		spyJwtVerify.mockReturnValueOnce(Promise.reject(new Error()));
+		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
 		});
-		spyFetchTokensFromRefreshToken.mockReturnValueOnce(
-			Promise.reject(new Error()),
-		);
+		spyFetchTokensFromRefreshToken.mockRejectedValueOnce(new Error());
 		spyGetRedirectToCognitoUserPoolResponse.mockReturnValueOnce({
 			response: 'toto',
 		});
@@ -1463,9 +1504,7 @@ describe('handle', () => {
 
 	describe('_getRedirectResponse', () => {
 		test('should handle expected case (relative path with / prefix)', async () => {
-			spyJwtVerify.mockReturnValueOnce(
-				Promise.resolve(createMockCognitoPayload('toto')),
-			);
+			spyJwtVerify.mockResolvedValueOnce(createMockCognitoPayload('toto'));
 
 			const response = await authenticator._getRedirectResponse(
 				{
@@ -1486,9 +1525,7 @@ describe('handle', () => {
 
 		test('should handle case where relative path is missing / prefix)', async () => {
 			jest.spyOn(authenticator._jwtVerifier, 'verify');
-			spyJwtVerify.mockReturnValueOnce(
-				Promise.resolve(createMockCognitoPayload('toto')),
-			);
+			spyJwtVerify.mockResolvedValueOnce(createMockCognitoPayload('toto'));
 
 			const response = await authenticator._getRedirectResponse(
 				{
@@ -1508,9 +1545,7 @@ describe('handle', () => {
 		});
 
 		test('should redirect to a subpath of the CloudFront domain even if state contains a malicious URL (inc. protocol)', async () => {
-			spyJwtVerify.mockReturnValueOnce(
-				Promise.resolve(createMockCognitoPayload('toto')),
-			);
+			spyJwtVerify.mockResolvedValueOnce(createMockCognitoPayload('toto'));
 
 			const response = await authenticator._getRedirectResponse(
 				{
@@ -1530,9 +1565,7 @@ describe('handle', () => {
 		});
 
 		test('should redirect to a subpath of the CloudFront domain even if state contains a malicious URL (// no protocol)', async () => {
-			spyJwtVerify.mockReturnValueOnce(
-				Promise.resolve(createMockCognitoPayload('toto')),
-			);
+			spyJwtVerify.mockResolvedValueOnce(createMockCognitoPayload('toto'));
 
 			const response = await authenticator._getRedirectResponse(
 				{
@@ -1560,6 +1593,9 @@ describe('handleSignIn', () => {
 	let spyJwtVerify: jest.SpyInstance;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(TEST_DATE);
+
 		authenticator = new Authenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -1577,19 +1613,22 @@ describe('handleSignIn', () => {
 		spyJwtVerify = jest.spyOn(authenticator._jwtVerifier, 'verify');
 	});
 
+	afterEach(() => {
+		jest.useRealTimers();
+		jest.restoreAllMocks();
+	});
+
 	test('should forward request if authenticated', async () => {
-		spyJwtVerify.mockReturnValueOnce(
-			Promise.resolve({
-				token_use: 'id',
-				sub: 'test-sub',
-				iss: 'test-iss',
-				exp: 0,
-				iat: 0,
-				auth_time: 0,
-				jti: 'test-jti',
-				origin_jti: 'test-origin-jti',
-			}),
-		);
+		spyJwtVerify.mockResolvedValueOnce({
+			token_use: 'id',
+			sub: 'test-sub',
+			iss: 'test-iss',
+			exp: 0,
+			iat: 0,
+			auth_time: 0,
+			jti: 'test-jti',
+			origin_jti: 'test-origin-jti',
+		});
 		const request = getCloudfrontRequest();
 		request.Records[0].cf.request.querystring =
 			'redirect_uri=https://example.aws.com';
@@ -1601,7 +1640,7 @@ describe('handleSignIn', () => {
 	});
 
 	test('should redirect to cognito if refresh token is invalid', () => {
-		spyJwtVerify.mockReturnValueOnce(Promise.reject(new Error()));
+		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
 		});
@@ -1626,6 +1665,9 @@ describe('handleParseAuth', () => {
 	let spyGetRedirectResponse: jest.SpyInstance;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(TEST_DATE);
+
 		authenticator = new Authenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -1640,15 +1682,18 @@ describe('handleParseAuth', () => {
 		spyGetRedirectResponse = jest.spyOn(authenticator, '_getRedirectResponse');
 	});
 
+	afterEach(() => {
+		jest.useRealTimers();
+		jest.restoreAllMocks();
+	});
+
 	describe('if code is present', () => {
 		test('should redirect successfully if csrfProtection is not enabled', async () => {
-			spyGetTokensFromCode.mockReturnValueOnce(
-				Promise.resolve({
-					idToken: tokenData.id_token,
-					refreshToken: tokenData.refresh_token,
-					accessToken: tokenData.access_token,
-				}),
-			);
+			spyGetTokensFromCode.mockResolvedValueOnce({
+				idToken: tokenData.id_token,
+				refreshToken: tokenData.refresh_token,
+				accessToken: tokenData.access_token,
+			});
 			spyGetRedirectResponse.mockReturnValueOnce({
 				response: 'toto',
 			});
@@ -1675,13 +1720,11 @@ describe('handleParseAuth', () => {
 				nonceSigningSecret: 'foo-bar',
 			};
 			spyValidateCSRFCookies.mockImplementation();
-			spyGetTokensFromCode.mockReturnValueOnce(
-				Promise.resolve({
-					idToken: tokenData.id_token,
-					refreshToken: tokenData.refresh_token,
-					accessToken: tokenData.access_token,
-				}),
-			);
+			spyGetTokensFromCode.mockResolvedValueOnce({
+				idToken: tokenData.id_token,
+				refreshToken: tokenData.refresh_token,
+				accessToken: tokenData.access_token,
+			});
 			spyGetRedirectResponse.mockReturnValueOnce({
 				response: 'toto',
 			});
@@ -1722,9 +1765,7 @@ describe('handleParseAuth', () => {
 	});
 
 	test('should throw if code is absent', async () => {
-		spyValidateCSRFCookies.mockImplementationOnce(() =>
-			Promise.reject(new Error()),
-		);
+		spyValidateCSRFCookies.mockRejectedValueOnce(new Error());
 		const result = await authenticator.handleParseAuth(getCloudfrontRequest());
 		expect(result).toEqual(expect.objectContaining({ status: '400' }));
 		expect(spyValidateCSRFCookies).not.toHaveBeenCalled();
@@ -1741,6 +1782,9 @@ describe('handleRefreshToken', () => {
 	let spyGetRedirectResponse: jest.SpyInstance;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(TEST_DATE);
+
 		authenticator = new Authenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -1759,21 +1803,22 @@ describe('handleRefreshToken', () => {
 		jest.spyOn(authenticator, '_getRedirectToCognitoUserPoolResponse');
 	});
 
+	afterEach(() => {
+		jest.useRealTimers();
+		jest.restoreAllMocks();
+	});
+
 	test('should refresh tokens successfully', async () => {
 		const username = 'toto';
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
 		});
-		spyJwtVerify.mockReturnValueOnce(
-			Promise.resolve(createMockCognitoPayload(username)),
-		);
-		spyFetchTokensFromRefreshToken.mockReturnValueOnce(
-			Promise.resolve({
-				idToken: tokenData.id_token,
-				refreshToken: tokenData.refresh_token,
-				accessToken: tokenData.access_token,
-			}),
-		);
+		spyJwtVerify.mockResolvedValueOnce(createMockCognitoPayload(username));
+		spyFetchTokensFromRefreshToken.mockResolvedValueOnce({
+			idToken: tokenData.id_token,
+			refreshToken: tokenData.refresh_token,
+			accessToken: tokenData.access_token,
+		});
 		spyGetRedirectResponse.mockReturnValueOnce({
 			response: 'toto',
 		});
@@ -1791,7 +1836,7 @@ describe('handleRefreshToken', () => {
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
 		});
-		spyJwtVerify.mockReturnValueOnce(Promise.reject(new Error()));
+		spyJwtVerify.mockRejectedValueOnce(new Error());
 		return expect(authenticator.handleRefreshToken(getCloudfrontRequest()))
 			.resolves.toEqual(expect.objectContaining({ status: '302' }))
 			.then(() => {
@@ -1810,6 +1855,9 @@ describe('handleSignOut', () => {
 	let spyClearCookies: jest.SpyInstance;
 
 	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(TEST_DATE);
+
 		authenticator = new Authenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -1821,6 +1869,11 @@ describe('handleSignOut', () => {
 		spyGetTokensFromCookie = jest.spyOn(authenticator, '_getTokensFromCookie');
 		spyRevokeTokens = jest.spyOn(authenticator, '_revokeTokens');
 		spyClearCookies = jest.spyOn(authenticator, '_clearCookies');
+	});
+
+	afterEach(() => {
+		jest.useRealTimers();
+		jest.restoreAllMocks();
 	});
 
 	test('should revoke tokens and clear cookies successfully', async () => {
@@ -1842,7 +1895,7 @@ describe('handleSignOut', () => {
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
 		});
-		spyRevokeTokens.mockReturnValueOnce(Promise.reject(new Error()));
+		spyRevokeTokens.mockRejectedValueOnce(new Error());
 		spyClearCookies.mockResolvedValueOnce({ status: '302' });
 		return expect(authenticator.handleSignOut(getCloudfrontRequest()))
 			.resolves.toEqual(expect.objectContaining({ status: '302' }))
