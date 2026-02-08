@@ -73,27 +73,28 @@ describe('private functions', () => {
 		jest.restoreAllMocks();
 	});
 
-	test('should fetch token', () => {
+	test('should fetch token', async () => {
 		jest.spyOn(axios, 'request').mockResolvedValue({ data: tokenData });
 
-		return authenticator
-			._fetchTokensFromCode('htt://redirect', 'AUTH_CODE')
-			.then((res) => {
-				expect(res).toMatchObject({
-					refreshToken: tokenData.refresh_token,
-					accessToken: tokenData.access_token,
-					idToken: tokenData.id_token,
-				});
-			});
+		const res = await authenticator._fetchTokensFromCode(
+			'htt://redirect',
+			'AUTH_CODE',
+		);
+
+		expect(res).toMatchObject({
+			refreshToken: tokenData.refresh_token,
+			accessToken: tokenData.access_token,
+			idToken: tokenData.id_token,
+		});
 	});
 
-	test('should throw if unable to fetch token', () => {
-		jest
-			.spyOn(axios, 'request')
-			.mockRejectedValue(new Error('Unexpected error'));
-		return expect(() =>
+	test('should throw if unable to fetch token', async () => {
+		const unexpectedError = new Error('Unexpected error');
+		jest.spyOn(axios, 'request').mockRejectedValue(unexpectedError);
+
+		await expect(() =>
 			authenticator._fetchTokensFromCode('htt://redirect', 'AUTH_CODE'),
-		).rejects.toThrow();
+		).rejects.toThrow(unexpectedError);
 	});
 
 	test('should getRedirectResponse', async () => {
@@ -128,7 +129,7 @@ describe('private functions', () => {
 				],
 			},
 		});
-		expect(response.headers?.['set-cookie']).toEqual(
+		expect(response.headers?.['set-cookie']).toStrictEqual(
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
@@ -152,7 +153,7 @@ describe('private functions', () => {
 				},
 			]),
 		);
-		expect(spyJwtVerify).toHaveBeenCalled();
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should not return cookie domain', async () => {
@@ -200,7 +201,7 @@ describe('private functions', () => {
 				],
 			},
 		});
-		expect(response.headers?.['set-cookie']).toEqual(
+		expect(response.headers?.['set-cookie']).toStrictEqual(
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
@@ -224,7 +225,7 @@ describe('private functions', () => {
 				},
 			]),
 		);
-		expect(spyJwtVerify).toHaveBeenCalled();
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should set HttpOnly on cookies', async () => {
@@ -273,7 +274,7 @@ describe('private functions', () => {
 				],
 			},
 		});
-		expect(response.headers?.['set-cookie']).toEqual(
+		expect(response.headers?.['set-cookie']).toStrictEqual(
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
@@ -297,7 +298,7 @@ describe('private functions', () => {
 				},
 			]),
 		);
-		expect(spyJwtVerify).toHaveBeenCalled();
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should set SameSite on cookies', async () => {
@@ -347,7 +348,7 @@ describe('private functions', () => {
 				],
 			},
 		});
-		expect(response.headers?.['set-cookie']).toEqual(
+		expect(response.headers?.['set-cookie']).toStrictEqual(
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
@@ -371,7 +372,7 @@ describe('private functions', () => {
 				},
 			]),
 		);
-		expect(spyJwtVerify).toHaveBeenCalled();
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should set Path on cookies', async () => {
@@ -422,7 +423,7 @@ describe('private functions', () => {
 				],
 			},
 		});
-		expect(response.headers?.['set-cookie']).toEqual(
+		expect(response.headers?.['set-cookie']).toStrictEqual(
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
@@ -446,7 +447,7 @@ describe('private functions', () => {
 				},
 			]),
 		);
-		expect(spyJwtVerify).toHaveBeenCalled();
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should set csrf tokens when the feature is enabled', async () => {
@@ -500,7 +501,7 @@ describe('private functions', () => {
 				],
 			},
 		});
-		expect(response.headers?.['set-cookie']).toEqual(
+		expect(response.headers?.['set-cookie']).toStrictEqual(
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
@@ -536,7 +537,7 @@ describe('private functions', () => {
 				},
 			]),
 		);
-		expect(spyJwtVerify).toHaveBeenCalled();
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should use overriden cookie settings', async () => {
@@ -605,7 +606,7 @@ describe('private functions', () => {
 				],
 			},
 		});
-		expect(response.headers?.['set-cookie']).toEqual(
+		expect(response.headers?.['set-cookie']).toStrictEqual(
 			expect.arrayContaining([
 				{
 					key: 'Set-Cookie',
@@ -641,7 +642,7 @@ describe('private functions', () => {
 				},
 			]),
 		);
-		expect(spyJwtVerify).toHaveBeenCalled();
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should getIdTokenFromCookie', () => {
@@ -754,7 +755,7 @@ describe('private functions', () => {
 			};
 		});
 
-		it('should throw error when nonce cookie is not present', () => {
+		test('should throw error when nonce cookie is not present', () => {
 			const request = buildRequest({ nonce: 'nonce-value' }, {});
 			expect(() => {
 				authenticator._validateCSRFCookies(request);
@@ -763,7 +764,7 @@ describe('private functions', () => {
 			);
 		});
 
-		it('should throw error when nonce cookie is different than the one encoded in state', () => {
+		test('should throw error when nonce cookie is different than the one encoded in state', () => {
 			const request = buildRequest(
 				{ [NONCE_COOKIE_NAME_SUFFIX]: 'nonce-value' },
 				{ [NONCE_COOKIE_NAME_SUFFIX]: 'nonce-value-different' },
@@ -775,7 +776,7 @@ describe('private functions', () => {
 			);
 		});
 
-		it('should throw error when pkce cookie is absent', () => {
+		test('should throw error when pkce cookie is absent', () => {
 			const request = buildRequest(
 				{
 					[NONCE_COOKIE_NAME_SUFFIX]: 'nonce-value',
@@ -790,9 +791,9 @@ describe('private functions', () => {
 			);
 		});
 
-		it('should throw error when calculated Hmac is different than the one stored in the cookie', async () => {
+		test('should throw error when calculated Hmac is different than the one stored in the cookie', async () => {
 			const csrfModule = await import('../src/util/csrf');
-			const signNonceSpy = jest
+			jest
 				.spyOn(csrfModule, 'signNonce')
 				.mockReturnValue('nonce-hmac-value-different');
 
@@ -810,8 +811,6 @@ describe('private functions', () => {
 			expect(() => {
 				authenticator._validateCSRFCookies(request);
 			}).toThrow('Nonce signature mismatch!');
-
-			signNonceSpy.mockRestore();
 		});
 	});
 
@@ -831,7 +830,7 @@ describe('private functions', () => {
 	});
 
 	describe('_clearCookies', () => {
-		it('should verify tokens and clear cookies', async () => {
+		test('should verify tokens and clear cookies', async () => {
 			jest
 				.spyOn(authenticator._jwtVerifier, 'verify')
 				.mockResolvedValueOnce(createMockCognitoPayload());
@@ -844,7 +843,7 @@ describe('private functions', () => {
 				getCloudfrontRequest(),
 				tokens,
 			);
-			expect(response).toEqual(
+			expect(response).toStrictEqual(
 				expect.objectContaining({
 					status: '302',
 				}),
@@ -852,7 +851,7 @@ describe('private functions', () => {
 			expect(response.headers?.['set-cookie'].length).toBe(5);
 		});
 
-		it('should clear cookies even if tokens cannot be verified', async () => {
+		test('should clear cookies even if tokens cannot be verified', async () => {
 			jest
 				.spyOn(authenticator._jwtVerifier, 'verify')
 				.mockRejectedValueOnce(new Error());
@@ -865,7 +864,7 @@ describe('private functions', () => {
 			const numCookiesToBeCleared =
 				request.Records[0].cf.request.headers['cookie'].length || 0;
 			const response = await authenticator._clearCookies(request, tokens);
-			expect(response).toEqual(
+			expect(response).toStrictEqual(
 				expect.objectContaining({
 					status: '302',
 				}),
@@ -875,7 +874,7 @@ describe('private functions', () => {
 			);
 		});
 
-		it('should clear cookies and redirect to logoutRedirectUri', async () => {
+		test('should clear cookies and redirect to logoutRedirectUri', async () => {
 			jest
 				.spyOn(authenticator._jwtVerifier, 'verify')
 				.mockResolvedValueOnce(createMockCognitoPayload());
@@ -892,13 +891,15 @@ describe('private functions', () => {
 				getCloudfrontRequest(),
 				tokens,
 			);
-			expect(response).toEqual(expect.objectContaining({ status: '302' }));
-			expect(response.headers?.['location']?.[0]?.value).toEqual(
+			expect(response).toStrictEqual(
+				expect.objectContaining({ status: '302' }),
+			);
+			expect(response.headers?.['location']?.[0]?.value).toStrictEqual(
 				'https://foobar.com',
 			);
 		});
 
-		it('should clear cookies and redirect to redirect_uri query param', async () => {
+		test('should clear cookies and redirect to redirect_uri query param', async () => {
 			jest
 				.spyOn(authenticator._jwtVerifier, 'verify')
 				.mockResolvedValueOnce(createMockCognitoPayload());
@@ -907,21 +908,25 @@ describe('private functions', () => {
 			request.Records[0].cf.request.querystring =
 				'redirect_uri=https://foobar.com';
 			const response = await authenticator._clearCookies(request);
-			expect(response).toEqual(expect.objectContaining({ status: '302' }));
-			expect(response.headers?.['location']?.[0]?.value).toEqual(
+			expect(response).toStrictEqual(
+				expect.objectContaining({ status: '302' }),
+			);
+			expect(response.headers?.['location']?.[0]?.value).toStrictEqual(
 				'https://foobar.com',
 			);
 		});
 
-		it('should clear cookies and redirect to cf domain', async () => {
+		test('should clear cookies and redirect to cf domain', async () => {
 			jest
 				.spyOn(authenticator._jwtVerifier, 'verify')
 				.mockResolvedValueOnce(createMockCognitoPayload());
 			authenticator._jwtVerifier.cacheJwks(jwksData, 'us-east-1_abcdef123');
 			const request = getCloudfrontRequest();
 			const response = await authenticator._clearCookies(request);
-			expect(response).toEqual(expect.objectContaining({ status: '302' }));
-			expect(response.headers?.['location']?.[0]?.value).toEqual(
+			expect(response).toStrictEqual(
+				expect.objectContaining({ status: '302' }),
+			);
+			expect(response.headers?.['location']?.[0]?.value).toStrictEqual(
 				'https://d111111abcdef8.cloudfront.net',
 			);
 		});
@@ -1154,7 +1159,7 @@ describe('handle', () => {
 		jest.restoreAllMocks();
 	});
 
-	test('should forward request if authenticated', () => {
+	test('should forward request if authenticated', async () => {
 		spyJwtVerify.mockResolvedValueOnce({
 			token_use: 'id',
 			sub: 'test-sub',
@@ -1165,15 +1170,15 @@ describe('handle', () => {
 			jti: 'test-jti',
 			origin_jti: 'test-origin-jti',
 		});
-		return expect(authenticator.handle(getCloudfrontRequest()))
-			.resolves.toEqual(getCloudfrontRequest().Records[0].cf.request)
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyJwtVerify).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handle(getCloudfrontRequest());
+
+		expect(result).toStrictEqual(getCloudfrontRequest().Records[0].cf.request);
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
-	test('should fetch with refresh token if available', () => {
+	test('should fetch with refresh token if available', async () => {
 		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
@@ -1184,21 +1189,21 @@ describe('handle', () => {
 		});
 		const request = getCloudfrontRequest();
 		request.Records[0].cf.request.querystring = 'code=54fe5f4e&state=/lol';
-		return expect(authenticator.handle(request))
-			.resolves.toEqual({ response: 'toto' })
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyFetchTokensFromRefreshToken).toHaveBeenCalled();
-				expect(spyGetRedirectResponse).toHaveBeenCalledWith(
-					tokenData,
-					'd111111abcdef8.cloudfront.net',
-					'/lol',
-				);
-			});
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual({ response: 'toto' });
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyFetchTokensFromRefreshToken).toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).toHaveBeenCalledWith(
+			tokenData,
+			'd111111abcdef8.cloudfront.net',
+			'/lol',
+		);
 	});
 
-	test('should redirect to cognito if refresh token is invalid', () => {
+	test('should redirect to cognito if refresh token is invalid', async () => {
 		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
@@ -1208,16 +1213,16 @@ describe('handle', () => {
 			response: 'toto',
 		});
 		const request = getCloudfrontRequest();
-		return expect(authenticator.handle(request))
-			.resolves.toEqual({ response: 'toto' })
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyFetchTokensFromRefreshToken).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual({ response: 'toto' });
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyFetchTokensFromRefreshToken).toHaveBeenCalledTimes(1);
 	});
 
-	test('should fetch and set token if code is present', () => {
+	test('should fetch and set token if code is present', async () => {
 		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCode.mockResolvedValueOnce(tokenData);
 		spyGetRedirectResponse.mockReturnValueOnce({
@@ -1225,20 +1230,20 @@ describe('handle', () => {
 		});
 		const request = getCloudfrontRequest();
 		request.Records[0].cf.request.querystring = 'code=54fe5f4e&state=/lol';
-		return expect(authenticator.handle(request))
-			.resolves.toEqual({ response: 'toto' })
-			.then(() => {
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyGetTokensFromCode).toHaveBeenCalled();
-				expect(spyGetRedirectResponse).toHaveBeenCalledWith(
-					tokenData,
-					'd111111abcdef8.cloudfront.net',
-					'/lol',
-				);
-			});
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual({ response: 'toto' });
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyGetTokensFromCode).toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).toHaveBeenCalledWith(
+			tokenData,
+			'd111111abcdef8.cloudfront.net',
+			'/lol',
+		);
 	});
 
-	test('should fetch and set token if code is present (custom redirect)', () => {
+	test('should fetch and set token if code is present (custom redirect)', async () => {
 		const authenticatorWithCustomRedirect = new Authenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -1260,23 +1265,23 @@ describe('handle', () => {
 
 		const request = getCloudfrontRequest();
 		request.Records[0].cf.request.querystring = 'code=54fe5f4e&state=/lol';
-		return expect(authenticatorWithCustomRedirect.handle(request))
-			.resolves.toEqual({ status: '302' })
-			.then(() => {
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyFetchTokensFromCode).toHaveBeenCalledWith(
-					'https://d111111abcdef8.cloudfront.net/custom/login/path',
-					'54fe5f4e',
-				);
-				expect(spyGetRedirectResponse).toHaveBeenCalledWith(
-					tokenData,
-					'd111111abcdef8.cloudfront.net',
-					'/lol',
-				);
-			});
+
+		const result = await authenticatorWithCustomRedirect.handle(request);
+
+		expect(result).toStrictEqual({ status: '302' });
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyFetchTokensFromCode).toHaveBeenCalledWith(
+			'https://d111111abcdef8.cloudfront.net/custom/login/path',
+			'54fe5f4e',
+		);
+		expect(spyGetRedirectResponse).toHaveBeenCalledWith(
+			tokenData,
+			'd111111abcdef8.cloudfront.net',
+			'/lol',
+		);
 	});
 
-	test('should fetch and set token if code is present and when csrfProtection is enabled', () => {
+	test('should fetch and set token if code is present and when csrfProtection is enabled', async () => {
 		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCode.mockResolvedValueOnce(tokenData);
 		spyGetRedirectResponse.mockReturnValueOnce({
@@ -1290,52 +1295,52 @@ describe('handle', () => {
 		).toString('base64');
 		const request = getCloudfrontRequest();
 		request.Records[0].cf.request.querystring = `code=54fe5f4e&state=${encodedState}`;
-		return expect(authenticator.handle(request))
-			.resolves.toEqual({ response: 'toto' })
-			.then(() => {
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyGetTokensFromCode).toHaveBeenCalled();
-				expect(spyGetRedirectResponse).toHaveBeenCalledWith(
-					tokenData,
-					'd111111abcdef8.cloudfront.net',
-					'/lol',
-				);
-			});
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual({ response: 'toto' });
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyGetTokensFromCode).toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).toHaveBeenCalledWith(
+			tokenData,
+			'd111111abcdef8.cloudfront.net',
+			'/lol',
+		);
 	});
 
-	test('should redirect to auth domain if unauthenticated and no code', () => {
+	test('should redirect to auth domain if unauthenticated and no code', async () => {
 		spyJwtVerify.mockRejectedValueOnce(new Error());
-		return expect(authenticator.handle(getCloudfrontRequest()))
-			.resolves.toEqual({
-				status: '302',
-				headers: {
-					location: [
-						{
-							key: 'Location',
-							value:
-								'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
-						},
-					],
-					'cache-control': [
-						{
-							key: 'Cache-Control',
-							value: 'no-cache, no-store, max-age=0, must-revalidate',
-						},
-					],
-					pragma: [
-						{
-							key: 'Pragma',
-							value: 'no-cache',
-						},
-					],
-				},
-			})
-			.then(() => {
-				expect(spyJwtVerify).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handle(getCloudfrontRequest());
+
+		expect(result).toStrictEqual({
+			status: '302',
+			headers: {
+				location: [
+					{
+						key: 'Location',
+						value:
+							'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
+					},
+				],
+				'cache-control': [
+					{
+						key: 'Cache-Control',
+						value: 'no-cache, no-store, max-age=0, must-revalidate',
+					},
+				],
+				pragma: [
+					{
+						key: 'Pragma',
+						value: 'no-cache',
+					},
+				],
+			},
+		});
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
-	test('should redirect to auth domain if unauthenticated and no code (custom redirect)', () => {
+	test('should redirect to auth domain if unauthenticated and no code (custom redirect)', async () => {
 		const authenticatorWithCustomRedirect = new Authenticator({
 			region: 'us-east-1',
 			userPoolId: 'us-east-1_abcdef123',
@@ -1346,36 +1351,36 @@ describe('handle', () => {
 		const spyJwtVerify = jest
 			.spyOn(authenticatorWithCustomRedirect._jwtVerifier, 'verify')
 			.mockRejectedValueOnce(new Error());
-		return expect(
-			authenticatorWithCustomRedirect.handle(getCloudfrontRequest()),
-		)
-			.resolves.toEqual({
-				status: '302',
-				headers: {
-					location: [
-						{
-							key: 'Location',
-							value:
-								'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net%2Fcustom%2Flogin%2Fpath&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
-						},
-					],
-					'cache-control': [
-						{
-							key: 'Cache-Control',
-							value: 'no-cache, no-store, max-age=0, must-revalidate',
-						},
-					],
-					pragma: [
-						{
-							key: 'Pragma',
-							value: 'no-cache',
-						},
-					],
-				},
-			})
-			.then(() => {
-				expect(spyJwtVerify).toHaveBeenCalled();
-			});
+
+		const result = await authenticatorWithCustomRedirect.handle(
+			getCloudfrontRequest(),
+		);
+
+		expect(result).toStrictEqual({
+			status: '302',
+			headers: {
+				location: [
+					{
+						key: 'Location',
+						value:
+							'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net%2Fcustom%2Flogin%2Fpath&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
+					},
+				],
+				'cache-control': [
+					{
+						key: 'Cache-Control',
+						value: 'no-cache, no-store, max-age=0, must-revalidate',
+					},
+				],
+				pragma: [
+					{
+						key: 'Pragma',
+						value: 'no-cache',
+					},
+				],
+			},
+		});
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
 	});
 
 	test('should redirect to auth domain and clear csrf cookies if unauthenticated and no code', async () => {
@@ -1406,15 +1411,15 @@ describe('handle', () => {
 		const locationHeader = response.headers?.['location'];
 		expect(locationHeader).toBeDefined();
 		const url = new URL(locationHeader?.[0]?.value ?? '');
-		expect(url.origin).toEqual(
+		expect(url.origin).toStrictEqual(
 			'https://my-cognito-domain.auth.us-east-1.amazoncognito.com',
 		);
-		expect(url.pathname).toEqual('/authorize');
-		expect(url.searchParams.get('redirect_uri')).toEqual(
+		expect(url.pathname).toStrictEqual('/authorize');
+		expect(url.searchParams.get('redirect_uri')).toStrictEqual(
 			'https://d111111abcdef8.cloudfront.net',
 		);
-		expect(url.searchParams.get('response_type')).toEqual('code');
-		expect(url.searchParams.get('client_id')).toEqual(
+		expect(url.searchParams.get('response_type')).toStrictEqual('code');
+		expect(url.searchParams.get('client_id')).toStrictEqual(
 			'123456789qwertyuiop987abcd',
 		);
 		expect(url.searchParams.get('state')).toBeDefined();
@@ -1455,12 +1460,12 @@ describe('handle', () => {
 		expect(response.headers?.location).toBeDefined();
 		const locationHeader = response.headers?.location;
 		const url = new URL(locationHeader?.[0]?.value ?? '');
-		expect(url.searchParams.get('redirect_uri')).toEqual(
+		expect(url.searchParams.get('redirect_uri')).toStrictEqual(
 			'https://d111111abcdef8.cloudfront.net/custom/login/path',
 		);
 	});
 
-	test('should revoke tokens and clear cookies if logoutConfiguration is set', () => {
+	test('should revoke tokens and clear cookies if logoutConfiguration is set', async () => {
 		authenticator._logoutConfiguration = {
 			logoutUri: '/logout',
 			logoutRedirectUri: 'https://example.com',
@@ -1472,13 +1477,13 @@ describe('handle', () => {
 		spyClearCookies.mockResolvedValueOnce({ status: '302' });
 		const request = getCloudfrontRequest();
 		request.Records[0].cf.request.uri = '/logout';
-		return expect(authenticator.handle(request))
-			.resolves.toEqual(expect.objectContaining({ status: '302' }))
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyRevokeTokens).toHaveBeenCalled();
-				expect(spyClearCookies).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual(expect.objectContaining({ status: '302' }));
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyRevokeTokens).toHaveBeenCalledTimes(1);
+		expect(spyClearCookies).toHaveBeenCalledTimes(1);
 	});
 
 	test('should clear cookies if logoutConfiguration is set even if user is unauthenticated', async () => {
@@ -1493,13 +1498,13 @@ describe('handle', () => {
 
 		const request = getCloudfrontRequest();
 		request.Records[0].cf.request.uri = '/logout';
-		return expect(authenticator.handle(request))
-			.resolves.toEqual(expect.objectContaining({ status: '302' }))
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyRevokeTokens).not.toHaveBeenCalled();
-				expect(spyClearCookies).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual(expect.objectContaining({ status: '302' }));
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyRevokeTokens).not.toHaveBeenCalledTimes(1);
+		expect(spyClearCookies).toHaveBeenCalledTimes(1);
 	});
 
 	describe('_getRedirectResponse', () => {
@@ -1518,7 +1523,7 @@ describe('handle', () => {
 
 			expect(response.headers?.location).toBeDefined();
 			const locationHeader = response.headers?.location;
-			expect(locationHeader?.[0]?.value).toEqual(
+			expect(locationHeader?.[0]?.value).toStrictEqual(
 				'https://example.com/subpath/1',
 			);
 		});
@@ -1539,7 +1544,7 @@ describe('handle', () => {
 
 			expect(response.headers?.location).toBeDefined();
 			const locationHeader = response.headers?.location;
-			expect(locationHeader?.[0]?.value).toEqual(
+			expect(locationHeader?.[0]?.value).toStrictEqual(
 				'https://example.com/subpath/2',
 			);
 		});
@@ -1559,7 +1564,7 @@ describe('handle', () => {
 
 			expect(response.headers?.location).toBeDefined();
 			const locationHeader = response.headers?.location;
-			expect(locationHeader?.[0]?.value).toEqual(
+			expect(locationHeader?.[0]?.value).toStrictEqual(
 				'https://example.com/https://malicious-site.com/phishing',
 			);
 		});
@@ -1579,7 +1584,7 @@ describe('handle', () => {
 
 			expect(response.headers?.location).toBeDefined();
 			const locationHeader = response.headers?.location;
-			expect(locationHeader?.[0]?.value).toEqual(
+			expect(locationHeader?.[0]?.value).toStrictEqual(
 				'https://example.com//malicious-site.com/phishing',
 			);
 		});
@@ -1633,13 +1638,13 @@ describe('handleSignIn', () => {
 		request.Records[0].cf.request.querystring =
 			'redirect_uri=https://example.aws.com';
 		const response = await authenticator.handleSignIn(request);
-		expect(response.status).toEqual('302');
+		expect(response.status).toStrictEqual('302');
 		expect(response.headers?.location).toBeDefined();
 		const locationHeader = response.headers?.location;
-		expect(locationHeader?.[0]?.value).toEqual('https://example.aws.com');
+		expect(locationHeader?.[0]?.value).toStrictEqual('https://example.aws.com');
 	});
 
-	test('should redirect to cognito if refresh token is invalid', () => {
+	test('should redirect to cognito if refresh token is invalid', async () => {
 		spyJwtVerify.mockRejectedValueOnce(new Error());
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
@@ -1648,13 +1653,13 @@ describe('handleSignIn', () => {
 			response: 'toto',
 		});
 		const request = getCloudfrontRequest();
-		return expect(authenticator.handleSignIn(request))
-			.resolves.toEqual({ response: 'toto' })
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyRedirectToCognito).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handleSignIn(request);
+
+		expect(result).toStrictEqual({ response: 'toto' });
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyRedirectToCognito).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -1706,13 +1711,13 @@ describe('handleParseAuth', () => {
 			).toString('base64');
 			const request = getCloudfrontRequest();
 			request.Records[0].cf.request.querystring = `code=code&state=${state}`;
-			return expect(authenticator.handleParseAuth(request))
-				.resolves.toEqual({ response: 'toto' })
-				.then(() => {
-					expect(spyValidateCSRFCookies).not.toHaveBeenCalled();
-					expect(spyGetTokensFromCode).toHaveBeenCalled();
-					expect(spyGetRedirectResponse).toHaveBeenCalled();
-				});
+
+			const result = await authenticator.handleParseAuth(request);
+
+			expect(result).toStrictEqual({ response: 'toto' });
+			expect(spyValidateCSRFCookies).not.toHaveBeenCalledTimes(1);
+			expect(spyGetTokensFromCode).toHaveBeenCalledTimes(1);
+			expect(spyGetRedirectResponse).toHaveBeenCalledTimes(1);
 		});
 
 		test('should redirect successfully after validating CSRF tokens', async () => {
@@ -1737,13 +1742,13 @@ describe('handleParseAuth', () => {
 			).toString('base64');
 			const request = getCloudfrontRequest();
 			request.Records[0].cf.request.querystring = `code=code&state=${state}`;
-			return expect(authenticator.handleParseAuth(request))
-				.resolves.toEqual({ response: 'toto' })
-				.then(() => {
-					expect(spyValidateCSRFCookies).toHaveBeenCalled();
-					expect(spyGetTokensFromCode).toHaveBeenCalled();
-					expect(spyGetRedirectResponse).toHaveBeenCalled();
-				});
+
+			const result = await authenticator.handleParseAuth(request);
+
+			expect(result).toStrictEqual({ response: 'toto' });
+			expect(spyValidateCSRFCookies).toHaveBeenCalledTimes(1);
+			expect(spyGetTokensFromCode).toHaveBeenCalledTimes(1);
+			expect(spyGetRedirectResponse).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -1754,23 +1759,23 @@ describe('handleParseAuth', () => {
 		});
 		const result: CloudFrontResultResponse =
 			await authenticator.handleParseAuth(getCloudfrontRequest());
-		expect(result).toEqual({
+		expect(result).toStrictEqual({
 			status: '400',
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			body: expect.stringContaining('parseAuthPath'),
 		});
-		expect(spyValidateCSRFCookies).not.toHaveBeenCalled();
-		expect(spyGetTokensFromCode).not.toHaveBeenCalled();
-		expect(spyGetRedirectResponse).not.toHaveBeenCalled();
+		expect(spyValidateCSRFCookies).not.toHaveBeenCalledTimes(1);
+		expect(spyGetTokensFromCode).not.toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).not.toHaveBeenCalledTimes(1);
 	});
 
 	test('should throw if code is absent', async () => {
 		spyValidateCSRFCookies.mockRejectedValueOnce(new Error());
 		const result = await authenticator.handleParseAuth(getCloudfrontRequest());
-		expect(result).toEqual(expect.objectContaining({ status: '400' }));
-		expect(spyValidateCSRFCookies).not.toHaveBeenCalled();
-		expect(spyGetTokensFromCode).not.toHaveBeenCalled();
-		expect(spyGetRedirectResponse).not.toHaveBeenCalled();
+		expect(result).toStrictEqual(expect.objectContaining({ status: '400' }));
+		expect(spyValidateCSRFCookies).not.toHaveBeenCalledTimes(1);
+		expect(spyGetTokensFromCode).not.toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).not.toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -1822,29 +1827,33 @@ describe('handleRefreshToken', () => {
 		spyGetRedirectResponse.mockReturnValueOnce({
 			response: 'toto',
 		});
-		return expect(authenticator.handleRefreshToken(getCloudfrontRequest()))
-			.resolves.toEqual({ response: 'toto' })
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyFetchTokensFromRefreshToken).toHaveBeenCalled();
-				expect(spyGetRedirectResponse).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handleRefreshToken(
+			getCloudfrontRequest(),
+		);
+
+		expect(result).toStrictEqual({ response: 'toto' });
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyFetchTokensFromRefreshToken).toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).toHaveBeenCalledTimes(1);
 	});
 
-	test('should redirect to cognito user pool if refresh token is invalid', () => {
+	test('should redirect to cognito user pool if refresh token is invalid', async () => {
 		spyGetTokensFromCookie.mockReturnValueOnce({
 			refreshToken: tokenData.refresh_token,
 		});
 		spyJwtVerify.mockRejectedValueOnce(new Error());
-		return expect(authenticator.handleRefreshToken(getCloudfrontRequest()))
-			.resolves.toEqual(expect.objectContaining({ status: '302' }))
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyJwtVerify).toHaveBeenCalled();
-				expect(spyFetchTokensFromRefreshToken).not.toHaveBeenCalled();
-				expect(spyGetRedirectResponse).not.toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handleRefreshToken(
+			getCloudfrontRequest(),
+		);
+
+		expect(result).toStrictEqual(expect.objectContaining({ status: '302' }));
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyFetchTokensFromRefreshToken).not.toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).not.toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -1882,13 +1891,13 @@ describe('handleSignOut', () => {
 		});
 		spyRevokeTokens.mockResolvedValueOnce(undefined);
 		spyClearCookies.mockResolvedValueOnce({ status: '302' });
-		return expect(authenticator.handleSignOut(getCloudfrontRequest()))
-			.resolves.toEqual(expect.objectContaining({ status: '302' }))
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyRevokeTokens).toHaveBeenCalled();
-				expect(spyClearCookies).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handleSignOut(getCloudfrontRequest());
+
+		expect(result).toStrictEqual(expect.objectContaining({ status: '302' }));
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyRevokeTokens).toHaveBeenCalledTimes(1);
+		expect(spyClearCookies).toHaveBeenCalledTimes(1);
 	});
 
 	test('should clear cookies successfully even if tokens cannot be revoked', async () => {
@@ -1897,13 +1906,13 @@ describe('handleSignOut', () => {
 		});
 		spyRevokeTokens.mockRejectedValueOnce(new Error());
 		spyClearCookies.mockResolvedValueOnce({ status: '302' });
-		return expect(authenticator.handleSignOut(getCloudfrontRequest()))
-			.resolves.toEqual(expect.objectContaining({ status: '302' }))
-			.then(() => {
-				expect(spyGetTokensFromCookie).toHaveBeenCalled();
-				expect(spyRevokeTokens).toHaveBeenCalled();
-				expect(spyClearCookies).toHaveBeenCalled();
-			});
+
+		const result = await authenticator.handleSignOut(getCloudfrontRequest());
+
+		expect(result).toStrictEqual(expect.objectContaining({ status: '302' }));
+		expect(spyGetTokensFromCookie).toHaveBeenCalledTimes(1);
+		expect(spyRevokeTokens).toHaveBeenCalledTimes(1);
+		expect(spyClearCookies).toHaveBeenCalledTimes(1);
 	});
 });
 

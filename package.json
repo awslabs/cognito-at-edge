@@ -31,6 +31,7 @@
 		"eslint": "^9.39.2",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-import-resolver-typescript": "^4.4.4",
+		"eslint-plugin-jest": "^29.12.2",
 		"globals": "^17.3.0",
 		"husky": "^9.1.7",
 		"jest": "^30.2.0",

@@ -101,24 +101,22 @@ describe('serialize tests', () => {
 
 	test('should have correct SAME_SITE_VALUES', () => {
 		expect(SAME_SITE_VALUES).toHaveLength(3);
-		expect(SAME_SITE_VALUES).toEqual(['Strict', 'Lax', 'None']);
+		expect(SAME_SITE_VALUES).toStrictEqual(['Strict', 'Lax', 'None']);
 	});
 });
 
 describe('getCookieDomain', () => {
-	it('should return cloudfront domain when disableCookieDomain is not set and cookieDomain is not set', () => {
-		expect(getCookieDomain('example.aws.com', false)).toEqual(
-			'example.aws.com',
-		);
+	test('should return cloudfront domain when disableCookieDomain is not set and cookieDomain is not set', () => {
+		expect(getCookieDomain('example.aws.com', false)).toBe('example.aws.com');
 	});
 
-	it('should return custom domain when cookieDomain is set', () => {
-		expect(getCookieDomain('example.aws.com', false, 'aws.com')).toEqual(
+	test('should return custom domain when cookieDomain is set', () => {
+		expect(getCookieDomain('example.aws.com', false, 'aws.com')).toBe(
 			'aws.com',
 		);
 	});
 
-	it('should return undefined when disableCookieDomain is set', () => {
+	test('should return undefined when disableCookieDomain is set', () => {
 		expect(getCookieDomain('example.aws.com', true)).toBeUndefined();
 	});
 });
