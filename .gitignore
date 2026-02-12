@@ -1,6 +1,13 @@
-node_modules
-output-template.yml
-*.tgz
-coverage/
+# Dependencies
+node_modules/
+
+# Build outputs and artifacts
 dist/
+coverage/
+.eslintcache
+*.tgz
+
+# Editor settings
+.vscode/
+
 .DS_Store
