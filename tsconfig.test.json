@@ -1,6 +1,12 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "strict": false
-  },
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true
+	},
+	"include": [
+		"src/**/*",
+		"__tests__/**/*",
+		"jest.config.ts",
+		"eslint.config.mts"
+	]
 }
