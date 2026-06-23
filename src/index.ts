@@ -939,7 +939,12 @@ export class Authenticator {
 						cfDomain,
 						this._getRedirectUriFromState(requestParams.state as string),
 					),
-				);
+				).catch((err) => {
+					if (err.response?.data?.error === "invalid_grant") {
+						return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
+					}
+					throw err;
+				});
 			} else {
 				return this._getRedirectToCognitoUserPoolResponse(request, redirectURI);
 			}
