@@ -88,6 +88,40 @@ describe('private functions', () => {
 		});
 	});
 
+	describe('should refresh tokens', () => {
+		test('and update refresh token when new refresh token returned', async () => {
+			jest.spyOn(axios, 'request').mockResolvedValue({ data: tokenData });
+
+			const res = await authenticator._fetchTokensFromRefreshToken(
+				'htt://redirect',
+				'REFRESH_TOKEN',
+			);
+
+			expect(res).toMatchObject({
+				refreshToken: tokenData.refresh_token,
+				accessToken: tokenData.access_token,
+				idToken: tokenData.id_token,
+			});
+		});
+
+		test('and keep existing refresh token when no new refresh token returned', async () => {
+			jest
+				.spyOn(axios, 'request')
+				.mockResolvedValue({ data: tokenDataWithoutRefreshToken });
+
+			const res = await authenticator._fetchTokensFromRefreshToken(
+				'htt://redirect',
+				'REFRESH_TOKEN',
+			);
+
+			expect(res).toMatchObject({
+				refreshToken: 'REFRESH_TOKEN',
+				accessToken: tokenDataWithoutRefreshToken.access_token,
+				idToken: tokenDataWithoutRefreshToken.id_token,
+			});
+		});
+	});
+
 	test('should throw if unable to fetch token', async () => {
 		const unexpectedError = new Error('Unexpected error');
 		jest.spyOn(axios, 'request').mockRejectedValue(unexpectedError);
@@ -1942,6 +1976,13 @@ const tokenData = {
 	refresh_token: 'dn43ud8uj32nk2je',
 	id_token: 'dmcxd329ujdmkemkd349r',
 	token_type: 'Bearer' as const,
+	expires_in: 3600,
+};
+
+const tokenDataWithoutRefreshToken = {
+	access_token: 'eyJz9sdfsdfsdfsdfsd',
+	id_token: 'dmcxd329ujdmkemkd349r',
+	token_type: 'Bearer',
 	expires_in: 3600,
 };
 
