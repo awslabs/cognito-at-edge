@@ -528,7 +528,8 @@ export class Authenticator {
   _getRedirectToCognitoUserPoolResponse(request: CloudFrontRequest, redirectURI: string): CloudFrontResultResponse {
     let redirectPath = request.uri;
     if (request.querystring && request.querystring !== '') {
-      redirectPath += encodeURIComponent('?' + request.querystring);
+      // No manual encoding here: `state` is encoded once by URLSearchParams below.
+      redirectPath += '?' + request.querystring;
     }
 
     let csrfTokens: CSRFTokens = {};
