@@ -1320,7 +1320,7 @@ describe('handle', () => {
 					{
 						key: 'Location',
 						value:
-							'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
+							'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%3F%3Fparam%3D1',
 					},
 				],
 				'cache-control': [
@@ -1363,7 +1363,7 @@ describe('handle', () => {
 					{
 						key: 'Location',
 						value:
-							'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net%2Fcustom%2Flogin%2Fpath&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%253F%253Fparam%253D1',
+							'https://my-cognito-domain.auth.us-east-1.amazoncognito.com/authorize?redirect_uri=https%3A%2F%2Fd111111abcdef8.cloudfront.net%2Fcustom%2Flogin%2Fpath&response_type=code&client_id=123456789qwertyuiop987abcd&state=%2Flol%3F%3Fparam%3D1',
 					},
 				],
 				'cache-control': [
@@ -1440,6 +1440,43 @@ describe('handle', () => {
 		expect(
 			cookies.find((c) => c.match(`.${PKCE_COOKIE_NAME_SUFFIX}=`)),
 		).toBeDefined();
+	});
+
+	test('should round trip the requested path and query string through the state param', async () => {
+		const path = '/evaluations/42/simulations/7';
+		const query = 'panel=simulations&view=journey';
+
+		// Outbound leg: unauthenticated deep link carrying a query string.
+		spyJwtVerify.mockRejectedValueOnce(new Error());
+		const request = getCloudfrontRequest();
+		request.Records[0].cf.request.uri = path;
+		request.Records[0].cf.request.querystring = query;
+
+		const redirectResponse = await authenticator.handle(request);
+		const location = (redirectResponse as CloudFrontResultResponse).headers?.[
+			'location'
+		][0].value as string;
+		const state = new URL(location).searchParams.get('state');
+		expect(state).toStrictEqual(`${path}?${query}`);
+
+		// Inbound leg: Cognito calls back with that same state, verbatim on the wire.
+		spyJwtVerify.mockRejectedValueOnce(new Error());
+		spyGetTokensFromCode.mockResolvedValueOnce(tokenData);
+		spyGetRedirectResponse.mockReturnValueOnce({
+			response: 'toto',
+		});
+		const callback = getCloudfrontRequest();
+		callback.Records[0].cf.request.querystring = `code=54fe5f4e&state=${encodeURIComponent(state as string)}`;
+
+		await authenticator.handle(callback);
+
+		// The original path and query string must survive the round trip intact,
+		// with no leftover percent-encoding folded into the path.
+		expect(spyGetRedirectResponse).toHaveBeenCalledWith(
+			tokenData,
+			'd111111abcdef8.cloudfront.net',
+			`${path}?${query}`,
+		);
 	});
 
 	test('should redirect to auth domain with custom return redirect if unauthenticated', async () => {
