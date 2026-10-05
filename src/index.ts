@@ -251,12 +251,16 @@ export class Authenticator {
 			.request<{
 				id_token: string;
 				access_token: string;
+				refresh_token?: string;
 			}>(request)
 			.then((resp) => {
 				this._logger.debug({ msg: 'Fetched tokens', tokens: resp.data });
 				return {
 					idToken: resp.data.id_token,
 					accessToken: resp.data.access_token,
+					// response will only contain a refresh token if refresh token roration is enabled
+					// if no new refresh token is present, reset the old one
+					refreshToken: resp.data.refresh_token ?? refreshToken,
 				};
 			})
 			.catch((err: unknown) => {
