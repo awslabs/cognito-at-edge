@@ -1816,6 +1816,132 @@ describe('handleParseAuth', () => {
 	});
 });
 
+describe('redirect state when csrfProtection is enabled', () => {
+	let authenticator: TestAuthenticator;
+
+	const getStateFromLocation = (response: CloudFrontResultResponse) => {
+		const location = response.headers?.location[0].value as string;
+		return new URL(location).searchParams.get('state') as string;
+	};
+
+	const getRequestFor = (uri: string, querystring: string) => {
+		const request = getCloudfrontRequest();
+		request.Records[0].cf.request.uri = uri;
+		request.Records[0].cf.request.querystring = querystring;
+		return request;
+	};
+
+	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(TEST_DATE);
+
+		authenticator = new TestAuthenticator({
+			region: 'us-east-1',
+			userPoolId: 'us-east-1_abcdef123',
+			userPoolAppId: '123456789qwertyuiop987abcd',
+			userPoolDomain: 'my-cognito-domain.auth.us-east-1.amazoncognito.com',
+			cookieExpirationDays: 365,
+			parseAuthPath: 'parseauth',
+			csrfProtection: {
+				nonceSigningSecret: 'foo-bar',
+			},
+		});
+		authenticator._jwtVerifier.cacheJwks(jwksData, 'us-east-1_abcdef123');
+	});
+
+	afterEach(() => {
+		jest.useRealTimers();
+		jest.restoreAllMocks();
+	});
+
+	test('should encode the requested path in state, not the callback address', () => {
+		const request = getRequestFor('/myfile.jpg', 'x=1').Records[0].cf.request;
+
+		const response = authenticator._getRedirectToCognitoUserPoolResponse(
+			request,
+			'https://d111111abcdef8.cloudfront.net/parseauth',
+		);
+
+		const state = getStateFromLocation(response);
+		expect(authenticator._getRedirectUriFromState(state)).toBe(
+			'/myfile.jpg?x=1',
+		);
+	});
+
+	test('should encode the path without a query string in state', () => {
+		const request = getRequestFor('/myfile.jpg', '').Records[0].cf.request;
+
+		const response = authenticator._getRedirectToCognitoUserPoolResponse(
+			request,
+			'https://d111111abcdef8.cloudfront.net/parseauth',
+		);
+
+		expect(
+			authenticator._getRedirectUriFromState(getStateFromLocation(response)),
+		).toBe('/myfile.jpg');
+	});
+
+	test('should still use the callback address as the Cognito redirect_uri', () => {
+		const request = getRequestFor('/myfile.jpg', 'x=1').Records[0].cf.request;
+		const callback = 'https://d111111abcdef8.cloudfront.net/parseauth';
+
+		const response = authenticator._getRedirectToCognitoUserPoolResponse(
+			request,
+			callback,
+		);
+
+		const location = response.headers?.location[0].value as string;
+		expect(new URL(location).searchParams.get('redirect_uri')).toBe(callback);
+	});
+
+	describe('handleParseAuth end to end', () => {
+		beforeEach(() => {
+			jest.spyOn(authenticator, '_validateCSRFCookies').mockImplementation();
+			jest.spyOn(authenticator, '_fetchTokensFromCode').mockResolvedValue({
+				idToken: tokenData.id_token,
+				refreshToken: tokenData.refresh_token,
+				accessToken: tokenData.access_token,
+			});
+			jest
+				.spyOn(authenticator._jwtVerifier, 'verify')
+				.mockResolvedValue(createMockCognitoPayload('toto'));
+		});
+
+		const loginAndReturn = async (uri: string, querystring: string) => {
+			const initial = authenticator._getRedirectToCognitoUserPoolResponse(
+				getRequestFor(uri, querystring).Records[0].cf.request,
+				'https://d111111abcdef8.cloudfront.net/parseauth',
+			);
+			const state = getStateFromLocation(initial);
+			return authenticator.handleParseAuth(
+				getRequestFor(
+					'/parseauth',
+					`code=54fe5f4e&state=${encodeURIComponent(state)}`,
+				),
+			);
+		};
+
+		test('should redirect to the originally requested path', async () => {
+			const response = await loginAndReturn('/myfile.jpg', 'x=1');
+
+			expect(response.status).toBe('302');
+			expect(response.headers?.location[0].value).toBe(
+				'https://d111111abcdef8.cloudfront.net/myfile.jpg?x=1',
+			);
+		});
+
+		test('should not change the host for a path starting with two slashes', async () => {
+			const response = await loginAndReturn('//evil.com/phish', '');
+
+			const location = response.headers?.location[0].value as string;
+			expect(location).toBe(
+				'https://d111111abcdef8.cloudfront.net//evil.com/phish',
+			);
+			expect(new URL(location).host).toBe('d111111abcdef8.cloudfront.net');
+		});
+	});
+});
+
 describe('handleRefreshToken', () => {
 	let authenticator: Authenticator;
 	let spyGetTokensFromCookie: jest.SpyInstance;
