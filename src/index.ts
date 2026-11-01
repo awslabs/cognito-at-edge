@@ -931,6 +931,23 @@ export class Authenticator {
 
 			const requestParams = parse(request.querystring);
 			if (requestParams.code) {
+				if (this._csrfProtection) {
+					// Same check as in handleParseAuth: without it, anyone could make a
+					// victim's browser exchange an attacker-controlled authorization code
+					// (login CSRF).
+					try {
+						this._validateCSRFCookies(request);
+					} catch (csrfErr) {
+						this._logger.debug({
+							msg: 'CSRF validation failed, refusing to exchange code for tokens',
+							err: csrfErr,
+						});
+						return {
+							status: '400',
+							body: String(csrfErr),
+						};
+					}
+				}
 				return this._fetchTokensFromCode(
 					redirectURI,
 					requestParams.code as string,
