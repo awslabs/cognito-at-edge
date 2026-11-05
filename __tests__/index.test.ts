@@ -8,6 +8,7 @@ import {
 import { Authenticator, AuthenticatorParams } from '../src/';
 import { serializeCookie, SameSite } from '../src/util/cookie';
 import {
+	generateCSRFTokens,
 	NONCE_COOKIE_NAME_SUFFIX,
 	NONCE_HMAC_COOKIE_NAME_SUFFIX,
 	PKCE_COOKIE_NAME_SUFFIX,
@@ -1290,6 +1291,9 @@ describe('handle', () => {
 		authenticator._csrfProtection = {
 			nonceSigningSecret: 'foobar',
 		};
+		const spyValidateCSRFCookies = jest
+			.spyOn(authenticator, '_validateCSRFCookies')
+			.mockImplementation();
 		const encodedState = Buffer.from(
 			JSON.stringify({ redirect_uri: '/lol' }),
 		).toString('base64');
@@ -1300,6 +1304,100 @@ describe('handle', () => {
 
 		expect(result).toStrictEqual({ response: 'toto' });
 		expect(spyJwtVerify).toHaveBeenCalledTimes(1);
+		expect(spyValidateCSRFCookies).toHaveBeenCalledTimes(1);
+		expect(spyGetTokensFromCode).toHaveBeenCalledTimes(1);
+		expect(spyGetRedirectResponse).toHaveBeenCalledWith(
+			tokenData,
+			'd111111abcdef8.cloudfront.net',
+			'/lol',
+		);
+	});
+
+	test('should not exchange the code if csrfProtection is enabled and the CSRF cookies are missing', async () => {
+		spyJwtVerify.mockRejectedValueOnce(new Error());
+		authenticator._csrfProtection = {
+			nonceSigningSecret: 'foobar',
+		};
+		const { state } = generateCSRFTokens('/lol', 'foobar');
+		const request = getCloudfrontRequest();
+		request.Records[0].cf.request.querystring = `code=54fe5f4e&state=${state}`;
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual({
+			status: '400',
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			body: expect.stringContaining('nonce cookie'),
+		});
+		expect(spyGetTokensFromCode).not.toHaveBeenCalled();
+		expect(spyGetRedirectResponse).not.toHaveBeenCalled();
+	});
+
+	test('should not exchange the code if csrfProtection is enabled and the nonce cookie does not match the state', async () => {
+		spyJwtVerify.mockRejectedValueOnce(new Error());
+		authenticator._csrfProtection = {
+			nonceSigningSecret: 'foobar',
+		};
+		const victim = generateCSRFTokens('/lol', 'foobar');
+		const attackerState = generateCSRFTokens('/lol', 'foobar').state;
+		const request = getCloudfrontRequest();
+		request.Records[0].cf.request.querystring = `code=54fe5f4e&state=${attackerState}`;
+		request.Records[0].cf.request.headers.cookie = [
+			{
+				key: 'cookie',
+				value: `${authenticator._cookieBase}.${NONCE_COOKIE_NAME_SUFFIX}=${victim.nonce}`,
+			},
+			{
+				key: 'cookie',
+				value: `${authenticator._cookieBase}.${PKCE_COOKIE_NAME_SUFFIX}=${victim.pkce}`,
+			},
+			{
+				key: 'cookie',
+				value: `${authenticator._cookieBase}.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=${victim.nonceHmac}`,
+			},
+		];
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual({
+			status: '400',
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			body: expect.stringContaining('Nonce mismatch'),
+		});
+		expect(spyGetTokensFromCode).not.toHaveBeenCalled();
+		expect(spyGetRedirectResponse).not.toHaveBeenCalled();
+	});
+
+	test('should fetch and set token if code is present and the CSRF cookies match the state', async () => {
+		spyJwtVerify.mockRejectedValueOnce(new Error());
+		spyGetTokensFromCode.mockResolvedValueOnce(tokenData);
+		spyGetRedirectResponse.mockReturnValueOnce({
+			response: 'toto',
+		});
+		authenticator._csrfProtection = {
+			nonceSigningSecret: 'foobar',
+		};
+		const csrfTokens = generateCSRFTokens('/lol', 'foobar');
+		const request = getCloudfrontRequest();
+		request.Records[0].cf.request.querystring = `code=54fe5f4e&state=${csrfTokens.state}`;
+		request.Records[0].cf.request.headers.cookie = [
+			{
+				key: 'cookie',
+				value: `${authenticator._cookieBase}.${NONCE_COOKIE_NAME_SUFFIX}=${csrfTokens.nonce}`,
+			},
+			{
+				key: 'cookie',
+				value: `${authenticator._cookieBase}.${PKCE_COOKIE_NAME_SUFFIX}=${csrfTokens.pkce}`,
+			},
+			{
+				key: 'cookie',
+				value: `${authenticator._cookieBase}.${NONCE_HMAC_COOKIE_NAME_SUFFIX}=${csrfTokens.nonceHmac}`,
+			},
+		];
+
+		const result = await authenticator.handle(request);
+
+		expect(result).toStrictEqual({ response: 'toto' });
 		expect(spyGetTokensFromCode).toHaveBeenCalledTimes(1);
 		expect(spyGetRedirectResponse).toHaveBeenCalledWith(
 			tokenData,
