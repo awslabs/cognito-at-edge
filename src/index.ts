@@ -771,7 +771,7 @@ export class Authenticator {
 		let state: string | undefined = redirectPath;
 		if (this._csrfProtection) {
 			csrfTokens = generateCSRFTokens(
-				redirectURI,
+				redirectPath,
 				this._csrfProtection.nonceSigningSecret,
 			);
 			state = csrfTokens.state;
