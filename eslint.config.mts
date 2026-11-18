@@ -7,7 +7,12 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig([
-	globalIgnores(['dist/', 'coverage/', 'CognitoAtEdgeTests/']),
+	globalIgnores([
+		'dist/',
+		'coverage/',
+		'CognitoAtEdgeTests/',
+		'cloudfront-functions/test-stack/cdk.out/',
+	]),
 	js.configs.recommended,
 	{
 		files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],

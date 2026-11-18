@@ -1,0 +1,21 @@
+{
+	"name": "cognito-at-edge-cloudfront-functions-test-stack",
+	"private": true,
+	"description": "Deployable test stack and end-to-end test for the CloudFront Functions option of cognito-at-edge.",
+	"type": "module",
+	"scripts": {
+		"deploy": "cdk deploy --require-approval never --outputs-file cdk-outputs.json",
+		"destroy": "cdk destroy",
+		"e2e": "node e2e.mjs"
+	},
+	"devDependencies": {
+		"@aws-sdk/client-cloudfront-keyvaluestore": "^3.1135.0",
+		"@aws-sdk/client-secrets-manager": "^3.1135.0",
+		"@aws-sdk/signature-v4a": "^3.1111.0",
+		"aws-cdk": "^2.1148.1",
+		"aws-cdk-lib": "^2.277.0",
+		"constructs": "^10.8.1",
+		"esbuild": "^0.25.0",
+		"playwright": "^1.56.0"
+	}
+}
