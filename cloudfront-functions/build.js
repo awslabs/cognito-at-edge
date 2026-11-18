@@ -25,6 +25,7 @@ const DEFAULTS = {
 	logoutPath: '',
 	logoutRedirectUri: '/',
 	cognitoLogout: false,
+	jwksOriginId: '',
 	cookieExpirationDays: 365,
 	cookiePath: '/',
 	cookieDomain: '',
@@ -98,7 +99,12 @@ function minify(code) {
 		.filter(
 			(line) => line && !line.startsWith('//') && !/^\/\*.*\*\/$/.test(line),
 		)
-		.join('\n');
+		.reduce((out, line) => {
+			// No line break needed after an opening bracket or comma, or before a closing
+			// bracket or a continuation operator.
+			const join = /[({[,]$/.test(out) || /^([)}\].?:+]|&&|\|\|)/.test(line);
+			return out ? out + (join ? '' : '\n') + line : line;
+		}, '');
 }
 
 /**

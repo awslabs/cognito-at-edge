@@ -10,7 +10,10 @@ import cf from 'cloudfront';
 //   logout path               -> one cf.fetch POST /oauth2/revoke, clear cookies, 302
 //   anything else             -> 302 to the hosted UI, state + PKCE verifier in a cookie
 // Cognito unreachable -> 503 on the paths that need it (fail closed).
-// Public keys come from KeyValueStore, key 'jwk.<kid>', value { "n": ..., "e": ... }.
+// Public keys: KeyValueStore key 'jwk.<kid>' = { "n": ..., "e": ... }. On a miss, one cf.fetch
+// GETs the pool's JWKS from the issuer origin (jwksOriginId); unreachable -> 503.
+// At most one call per invocation, and none after WebCrypto: every path decides its call
+// from the token's kid and exp, read without crypto, before any subtle.* call.
 
 const C = __CONFIG__;
 const ISSUER =
@@ -47,36 +50,54 @@ function claimsOk(p, use) {
 	);
 }
 
-// RS256 signature with the key KVS holds for the token's kid. WebCrypto only after any
-// network call: the runtime forbids a call once a non-deterministic crypto operation ran.
-async function signatureOk(d) {
+// The one network call for keys: the pool's JWKS. Resolves to the JWK for kid, or null
+// when the JWKS has no such kid; throws when the JWKS cannot be fetched.
+async function fetchJwk(kid) {
+	const res = await cf.fetch('/' + C.userPoolId + '/.well-known/jwks.json', {
+		originId: C.jwksOriginId,
+		includeBody: true,
+	});
+	if (!res.ok) throw new Error('JWKS returned ' + res.status);
+	const text = await res.text();
+	const keys = JSON.parse(text).keys || [];
+	let jwk = null;
+	for (let i = 0; i < keys.length; i++) if (keys[i].kid === kid) jwk = keys[i];
+	return jwk;
+}
+
+// RS256 signature check: true or false, or null when no key is at hand for the kid.
+// KVS first, then (canFetch) the JWKS call; WebCrypto only after that.
+async function signatureOk(d, canFetch) {
 	if (d.header.alg !== 'RS256' || !d.header.kid) return false;
-	let jwk;
+	let jwk = null;
 	try {
 		const value = await cf.kvs().get('jwk.' + d.header.kid);
 		jwk = JSON.parse(value);
 	} catch (_e) {
+		jwk = null;
+	}
+	if (!jwk && canFetch && C.jwksOriginId) {
+		jwk = await fetchJwk(d.header.kid);
+		if (!jwk) return false;
+	}
+	if (!jwk) return null;
+	try {
+		const subtle = require('webcrypto').subtle;
+		const alg = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+		const key = await subtle.importKey(
+			'jwk',
+			{ kty: 'RSA', n: jwk.n, e: jwk.e, alg: 'RS256', ext: true },
+			alg,
+			false,
+			['verify'],
+		);
+		const signature = Buffer.from(d.parts[2], 'base64url');
+		const data = Buffer.from(d.parts[0] + '.' + d.parts[1]);
+		const valid = await subtle.verify(alg, key, signature, data);
+		return valid === true;
+	} catch (_e) {
 		return false;
 	}
-	const subtle = require('webcrypto').subtle;
-	const alg = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
-	const key = await subtle.importKey(
-		'jwk',
-		{ kty: 'RSA', n: jwk.n, e: jwk.e, alg: 'RS256', ext: true },
-		alg,
-		false,
-		['verify'],
-	);
-	const signature = Buffer.from(d.parts[2], 'base64url');
-	const data = Buffer.from(d.parts[0] + '.' + d.parts[1]);
-	return subtle.verify(alg, key, signature, data);
-}
-
-async function verify(token, use, now) {
-	const d = decode(token);
-	if (!d || !claimsOk(d.payload, use) || !(d.payload.exp > now)) return null;
-	const ok = await signatureOk(d);
-	return ok ? d.payload : null;
 }
 
 // The token cookies of the last signed-in user (the names Lambda@Edge cognito-at-edge writes).
@@ -140,6 +161,11 @@ function page(status, code, detail) {
 	};
 }
 
+// Fail closed: Cognito could not be asked (TypeError, TimeoutError, InternalError).
+function unavailable(code, error) {
+	return page(503, code, error.name + ': ' + error.message);
+}
+
 function queryString(q) {
 	const out = [];
 	for (const name in q) {
@@ -149,6 +175,11 @@ function queryString(q) {
 			out.push(name + (values[i].value === '' ? '' : '=' + values[i].value));
 	}
 	return out.join('&');
+}
+
+function here(request) {
+	const qs = queryString(request.querystring);
+	return request.uri + (qs ? '?' + qs : '');
 }
 
 function form(fields) {
@@ -172,8 +203,7 @@ function login(request, host, extraCookies) {
 		.createHash('sha256')
 		.update(verifier)
 		.digest('base64url');
-	const qs = queryString(request.querystring);
-	const back = request.uri + (qs ? '?' + qs : '');
+	const back = here(request);
 	const cookies = extraCookies || {};
 	cookies[STATE_COOKIE] = {
 		value: state + '.' + verifier + '.' + b64url(back),
@@ -214,20 +244,18 @@ async function cognito(path, fields) {
 	return { ok: res.ok, status: res.status, body: body };
 }
 
-// Verify the tokens Cognito just issued, set the cookies, 302 back to the page.
+// Tokens Cognito just issued over this function's own call: set the cookies, 302 back.
+// They are authentic (TLS to the token endpoint); the signature is still checked when the
+// key is in KVS. With an unknown kid it cannot be (a second call), so the next request
+// fetches the JWKS and verifies the cookie before any content is served.
 async function signedIn(tokens, back, now, refreshToken) {
-	const use = C.tokenUse === 'access' ? 'access' : 'id';
-	const payload = await verify(
-		use === 'access' ? tokens.access_token : tokens.id_token,
-		use,
-		now,
-	);
-	if (!payload)
-		return page(
-			502,
-			'token_verification_failed',
-			'is jwk.<kid> in the KeyValueStore?',
-		);
+	const use = C.tokenUse;
+	const d = decode(use === 'access' ? tokens.access_token : tokens.id_token);
+	if (!d || !claimsOk(d.payload, use))
+		return page(502, 'token_verification_failed');
+	const ok = await signatureOk(d, false);
+	if (ok === false) return page(502, 'token_verification_failed');
+	const payload = d.payload;
 	const user =
 		use === 'access' ? payload.username : payload['cognito:username'];
 	const prefix = BASE + '.' + user + '.';
@@ -280,7 +308,7 @@ async function callback(request, host, cookies, now) {
 			code_verifier: saved[1],
 		});
 	} catch (error) {
-		return page(503, 'auth_unavailable', error.name + ': ' + error.message);
+		return unavailable('auth_unavailable', error);
 	}
 	if (!res.ok)
 		return page(
@@ -345,17 +373,11 @@ async function refresh(request, host, cookies, tokens, now) {
 			refresh_token: tokens.refresh,
 		});
 	} catch (error) {
-		return page(503, 'auth_unavailable', error.name + ': ' + error.message);
+		return unavailable('auth_unavailable', error);
 	}
 	// A refresh token Cognito rejects (expired, revoked): start over at the hosted UI.
 	if (!res.ok) return login(request, host, clearAll(cookies));
-	const qs = queryString(request.querystring);
-	return signedIn(
-		res.body,
-		'https://' + host + request.uri + (qs ? '?' + qs : ''),
-		now,
-		'',
-	);
+	return signedIn(res.body, 'https://' + host + here(request), now, '');
 }
 
 // Called by CloudFront.
@@ -375,7 +397,12 @@ async function handler(event) {
 	const d = tokens.token ? decode(tokens.token) : null;
 	const claims = d && claimsOk(d.payload, C.tokenUse);
 	if (claims && d.payload.exp > now) {
-		const ok = await signatureOk(d);
+		let ok;
+		try {
+			ok = await signatureOk(d, true);
+		} catch (error) {
+			return unavailable('jwks_unavailable', error);
+		}
 		return ok ? request : login(request, host);
 	}
 	// Expired (or no token cookie) with a refresh token: one call, decided before any WebCrypto.
