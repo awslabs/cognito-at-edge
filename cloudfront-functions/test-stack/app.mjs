@@ -2,10 +2,11 @@
 //   - a Cognito user pool with a hosted UI prefix domain, a public app client and one test user
 //     (its password is generated in Secrets Manager and set at deploy time, never output)
 //   - a private S3 bucket (OAC) as the protected origin
-//   - a KeyValueStore seeded with the pool's JWKS
+//   - a KeyValueStore seeded with the pool's JWKS (a warm start: the function fetches the
+//     JWKS from the issuer, an extra origin, on a miss)
 //   - one distribution: default behavior protected by the function, the Cognito domain as an
 //     extra origin with no behavior (the function's cf.fetch target), and /unreachable/* protected
-//     by a second build of the function whose Cognito origin does not resolve
+//     by a second build of the function whose Cognito and JWKS origins do not resolve
 // Deploy: npx cdk deploy (us-east-1). Tags come from the optional "tags" context.
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
@@ -29,6 +30,7 @@ const { buildFunction } = require('../build.js');
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 const COGNITO_ORIGIN_ID = 'cognito';
+const JWKS_ORIGIN_ID = 'cognito-idp';
 const UNREACHABLE_ORIGIN_ID = 'cognito-unreachable';
 const TEST_USERNAME = 'test-user';
 
@@ -159,6 +161,7 @@ class CognitoAtEdgeCffTestStack extends cdk.Stack {
 			userPoolAppId: client.userPoolClientId,
 			userPoolDomain: cognitoDomainName,
 			cognitoOriginId: COGNITO_ORIGIN_ID,
+			jwksOriginId: JWKS_ORIGIN_ID,
 			parseAuthPath: '/parseauth',
 			logoutPath: '/logout',
 			logoutRedirectUri: '/',
@@ -184,6 +187,7 @@ class CognitoAtEdgeCffTestStack extends cdk.Stack {
 					buildFunction({
 						...settings,
 						cognitoOriginId: UNREACHABLE_ORIGIN_ID,
+						jwksOriginId: UNREACHABLE_ORIGIN_ID,
 						parseAuthPath: '/unreachable/parseauth',
 						logoutPath: '/unreachable/logout',
 					}),
@@ -242,6 +246,11 @@ class CognitoAtEdgeCffTestStack extends cdk.Stack {
 			'DistributionConfig.Origins.2',
 			callOrigin(UNREACHABLE_ORIGIN_ID, 'cognito-unreachable.invalid'),
 		);
+		// The user pool's issuer: the JWKS, fetched on a KVS miss.
+		cfn.addPropertyOverride(
+			'DistributionConfig.Origins.3',
+			callOrigin(JWKS_ORIGIN_ID, `cognito-idp.${this.region}.amazonaws.com`),
+		);
 		distribution.node.addDependency(domain);
 
 		new s3deploy.BucketDeployment(this, 'SiteContent', {
@@ -296,6 +305,9 @@ class CognitoAtEdgeCffTestStack extends cdk.Stack {
 			value: distribution.distributionId,
 		});
 		new cdk.CfnOutput(this, 'UserPoolId', { value: userPool.userPoolId });
+		new cdk.CfnOutput(this, 'KeyValueStoreArn', {
+			value: keyValueStore.keyValueStoreArn,
+		});
 		new cdk.CfnOutput(this, 'ClientId', { value: client.userPoolClientId });
 		new cdk.CfnOutput(this, 'CognitoDomain', { value: cognitoDomainName });
 		new cdk.CfnOutput(this, 'TestUsername', { value: TEST_USERNAME });

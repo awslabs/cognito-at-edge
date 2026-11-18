@@ -7,6 +7,14 @@ import {
 	SecretsManagerClient,
 	GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
+import '@aws-sdk/signature-v4a';
+import {
+	CloudFrontKeyValueStoreClient,
+	DeleteKeyCommand,
+	DescribeKeyValueStoreCommand,
+	GetKeyCommand,
+	PutKeyCommand,
+} from '@aws-sdk/client-cloudfront-keyvaluestore';
 import { chromium } from 'playwright';
 
 const outputs = Object.values(
@@ -23,6 +31,24 @@ function check(name, ok, detail = '') {
 	console.log(
 		`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`,
 	);
+}
+const kvs = new CloudFrontKeyValueStoreClient({ region: 'us-east-1' });
+const KvsARN = outputs.KeyValueStoreArn;
+async function kvsWrite(command, input) {
+	const { ETag } = await kvs.send(new DescribeKeyValueStoreCommand({ KvsARN }));
+	await kvs.send(new command({ KvsARN, IfMatch: ETag, ...input }));
+}
+// KVS changes reach each edge host on its own schedule; poll until the expected status is
+// seen on 5 requests in a row, so the next checks do not land on a host that lags.
+async function waitFor(path, cookies, status, seconds = 180) {
+	let streak = 0;
+	let last;
+	for (let i = 0; i < seconds && streak < 5; i++) {
+		last = await get(path, cookies);
+		streak = last.status === status ? streak + 1 : 0;
+		if (streak === 0) await new Promise((resolve) => setTimeout(resolve, 2000));
+	}
+	return last;
 }
 const short = (token) => `${String(token).slice(0, 8)}...`;
 
@@ -184,6 +210,69 @@ async function main() {
 			'refreshed id token: 200',
 			afterRefresh.status === 200,
 			`${afterRefresh.status}`,
+		);
+
+		// --- JWKS on a KVS miss: one cf.fetch to the issuer -----------------------------
+		const forgedKid = (() => {
+			const header = b64url(
+				JSON.stringify({ alg: 'RS256', kid: 'forged-kid' }),
+			);
+			const payload = idToken.split('.')[1];
+			const signature = sign(
+				'sha256',
+				Buffer.from(`${header}.${payload}`),
+				attackerKey.privateKey,
+			).toString('base64url');
+			return `${header}.${payload}.${signature}`;
+		})();
+		check(
+			'unknown (forged) kid: JWKS fetched, kid not in it, 302 to the hosted UI',
+			isAuthorize(await get('/', sessionCookies({ id: forgedKid }))),
+		);
+		const forgedUnreachable = await get(
+			'/unreachable/index.html',
+			sessionCookies({ id: forgedKid }),
+		);
+		check(
+			'unknown kid, JWKS endpoint unreachable: 503 jwks_unavailable',
+			forgedUnreachable.status === 503 &&
+				forgedUnreachable.body.includes('jwks_unavailable'),
+			`${forgedUnreachable.status} ${forgedUnreachable.error}`,
+		);
+		const kidKey = `jwk.${headerOf(newId).kid}`;
+		const saved = await kvs.send(new GetKeyCommand({ KvsARN, Key: kidKey }));
+		await kvsWrite(DeleteKeyCommand, { Key: kidKey });
+		try {
+			// /unreachable/* cannot fetch the JWKS: a 503 there shows the edge no longer has the key.
+			const missUnreachable = await waitFor(
+				'/unreachable/index.html',
+				sessionCookies({ id: newId }),
+				503,
+			);
+			check(
+				'kid missing from KVS, JWKS endpoint unreachable: 503 (fail closed)',
+				missUnreachable.status === 503 &&
+					missUnreachable.body.includes('jwks_unavailable'),
+				`${missUnreachable.status} ${missUnreachable.error}`,
+			);
+			const missFetched = await get('/', sessionCookies({ id: newId }));
+			check(
+				'kid missing from KVS: JWKS fetched, page served',
+				missFetched.status === 200 && missFetched.body.includes('protected'),
+				`${missFetched.status}`,
+			);
+		} finally {
+			await kvsWrite(PutKeyCommand, { Key: kidKey, Value: saved.Value });
+		}
+		const restored = await waitFor(
+			'/unreachable/index.html',
+			sessionCookies({ id: newId }),
+			200,
+		);
+		check(
+			'kid back in KVS: served with no call (unreachable origin)',
+			restored.status === 200,
+			`${restored.status}`,
 		);
 
 		// --- Callback --------------------------------------------------------------------
