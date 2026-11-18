@@ -66,6 +66,9 @@ const SETTINGS: Settings = {
 	sameSite: 'Lax',
 };
 
+const JWKS_SETTINGS: Settings = { ...SETTINGS, jwksOriginId: 'cognito-idp' };
+const JWKS_PATH = `/${POOL_ID}/.well-known/jwks.json`;
+
 const poolKey = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const otherKey = generateKeyPairSync('rsa', { modulusLength: 2048 });
 const poolJwk = poolKey.publicKey.export({ format: 'jwk' });
@@ -242,7 +245,7 @@ function stateCookie(state: string, verifier: string, back: string) {
 
 describe('cloudfront functions build', () => {
 	test('stays under the CloudFront Functions size limit', () => {
-		expect(Buffer.byteLength(buildFunction(SETTINGS))).toBeLessThan(
+		expect(Buffer.byteLength(buildFunction(JWKS_SETTINGS))).toBeLessThan(
 			MAX_FUNCTION_BYTES,
 		);
 	});
@@ -343,6 +346,124 @@ describe('cloudfront functions viewer request', () => {
 		const req = request('/page', { [`${BASE}.bob.idToken`]: idToken() });
 
 		await expect(rt.handle(req)).resolves.toBe(req);
+	});
+});
+
+function jwksBody(kid: string) {
+	return {
+		keys: [
+			{ kid, kty: 'RSA', alg: 'RS256', use: 'sig', n: poolJwk.n, e: poolJwk.e },
+		],
+	};
+}
+
+describe('cloudfront functions JWKS on a KVS miss', () => {
+	test('fetches the JWKS with one call and forwards a valid token', async () => {
+		const rt = runtime(JWKS_SETTINGS);
+		rt.answer(() => ({ status: 200, body: jwksBody('rotated-kid') }));
+		const req = request(
+			'/page',
+			userCookies({ id: idToken({}, { kid: 'rotated-kid' }) }),
+		);
+
+		await expect(rt.handle(req)).resolves.toBe(req);
+		expect(rt.calls).toHaveLength(1);
+		expect(rt.calls[0].path).toBe(JWKS_PATH);
+		expect(rt.calls[0].options.originId).toBe('cognito-idp');
+		expect(rt.calls[0].options.method).toBeUndefined();
+	});
+
+	test('uses the KVS copy without a call when the kid is there', async () => {
+		const rt = runtime(JWKS_SETTINGS);
+		const req = request('/page', userCookies({ id: idToken() }));
+
+		await expect(rt.handle(req)).resolves.toBe(req);
+		expect(rt.calls).toHaveLength(0);
+	});
+
+	test.each([
+		[
+			'a kid the JWKS does not have',
+			idToken({}, { kid: 'forged-kid' }),
+			jwksBody('other-kid'),
+		],
+		[
+			'a forged signature on a fetched kid',
+			idToken({}, { kid: 'rotated-kid', key: otherKey.privateKey }),
+			jwksBody('rotated-kid'),
+		],
+		[
+			'a JWKS key that is not RSA',
+			idToken({}, { kid: 'ec-kid' }),
+			{ keys: [{ kid: 'ec-kid', kty: 'EC', crv: 'P-256', x: 'AA', y: 'AA' }] },
+		],
+	])('redirects to the hosted UI for %s', async (_name, token, body) => {
+		const rt = runtime(JWKS_SETTINGS);
+		rt.answer(() => ({ status: 200, body }));
+		const result = await rt.handle(
+			request('/page', userCookies({ id: token })),
+		);
+
+		expect(location(result).pathname).toBe('/oauth2/authorize');
+		expect(rt.calls).toHaveLength(1);
+	});
+
+	test.each([
+		['TypeError', null],
+		['TimeoutError', null],
+		['a 500', 500],
+		['a body that is not JSON', 200],
+	])(
+		'fails closed with 503 when the JWKS cannot be fetched (%s)',
+		async (name, status) => {
+			const rt = runtime(JWKS_SETTINGS);
+			if (status === null) rt.fail(name);
+			else rt.answer(() => ({ status, body: '<html>' }));
+			const result = asResponse(
+				await rt.handle(
+					request(
+						'/page',
+						userCookies({ id: idToken({}, { kid: 'rotated-kid' }) }),
+					),
+				),
+			);
+
+			expect(result.statusCode).toBe(503);
+			expect(result.body).toBe('{"error":"jwks_unavailable"}');
+		},
+	);
+
+	test('without jwksOriginId a KVS miss is refused with no call', async () => {
+		const rt = runtime(SETTINGS);
+		const result = await rt.handle(
+			request(
+				'/page',
+				userCookies({ id: idToken({}, { kid: 'rotated-kid' }) }),
+			),
+		);
+
+		expect(location(result).pathname).toBe('/oauth2/authorize');
+		expect(rt.calls).toHaveLength(0);
+	});
+
+	test('an expired token with an unknown kid spends the call on the refresh, not the JWKS', async () => {
+		const rt = runtime(JWKS_SETTINGS);
+		rt.answer(() => ({
+			status: 200,
+			body: {
+				id_token: idToken({}, { kid: 'new-kid' }),
+				access_token: accessToken(),
+			},
+		}));
+		const cookies = userCookies({
+			id: idToken({ exp: now() - 10 }, { kid: 'unknown-kid' }),
+			refresh: 'refresh-token',
+		});
+		const result = asResponse(await rt.handle(request('/page', cookies)));
+
+		expect(result.statusCode).toBe(302);
+		expect(rt.calls).toHaveLength(1);
+		expect(rt.calls[0].path).toBe('/oauth2/token');
 	});
 });
 
@@ -530,22 +651,46 @@ describe('cloudfront functions callback', () => {
 		expect(result.statusCode).toBe(503);
 	});
 
-	test('answers 502 when the issued token does not verify', async () => {
-		const rt = runtime();
-		rt.answer(() => ({
-			status: 200,
-			body: { ...tokens(), id_token: idToken({}, { kid: 'missing' }) },
-		}));
-		const result = asResponse(
-			await rt.handle(
-				request('/parseauth', stateCookie('s', 'v', '/'), {
-					code: 'c',
-					state: 's',
-				}),
-			),
+	const exchange = (rt: ReturnType<typeof runtime>) =>
+		rt.handle(
+			request('/parseauth', stateCookie('s', 'v', '/'), {
+				code: 'c',
+				state: 's',
+			}),
 		);
 
-		expect(result.statusCode).toBe(502);
+	test.each([
+		[
+			'a signature that does not match the key in KVS',
+			{ key: otherKey.privateKey },
+			{},
+		],
+		['a wrong audience', {}, { aud: 'another-client' }],
+	])(
+		'answers 502 when the issued token has %s',
+		async (_name, options, claims) => {
+			const rt = runtime(JWKS_SETTINGS);
+			rt.answer(() => ({
+				status: 200,
+				body: { ...tokens(), id_token: idToken(claims, options) },
+			}));
+			const result = asResponse(await exchange(rt));
+
+			expect(result.statusCode).toBe(502);
+			expect(rt.calls).toHaveLength(1);
+		},
+	);
+
+	test('sets the cookies for an issued token whose kid is not in KVS, verified on the next request', async () => {
+		const rt = runtime(JWKS_SETTINGS);
+		const issued = idToken({}, { kid: 'new-kid' });
+		rt.answer(() => ({ status: 200, body: { ...tokens(), id_token: issued } }));
+		const result = asResponse(await exchange(rt));
+
+		expect(result.statusCode).toBe(302);
+		expect(result.cookies?.[`${BASE}.alice.idToken`]?.value).toBe(issued);
+		expect(rt.calls).toHaveLength(1);
+		expect(rt.calls[0].path).toBe('/oauth2/token');
 	});
 
 	test.each([
