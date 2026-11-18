@@ -46,6 +46,10 @@ exports.handler = async (request) => authenticator.handle(request);
 
 For an explanation of the interactions between CloudFront, Cognito and Lambda@Edge, we recommend reading this [AWS blog article](https://aws.amazon.com/blogs/networking-and-content-delivery/authorizationedge-how-to-use-lambdaedge-and-json-web-tokens-to-enhance-web-application-security/) which describe the required architecture to authenticate requests in CloudFront with Cognito.
 
+### Using CloudFront Functions instead of Lambda@Edge
+
+If you prefer not to run a Lambda@Edge function, [`cloudfront-functions/`](./cloudfront-functions/) contains a CloudFront Functions version of the `handle()` flow: one viewer-request function, generated from your settings, that verifies the token cookies at the edge with the user pool's public keys cached in a CloudFront KeyValueStore, redirects unauthenticated viewers to the hosted UI with `state` and PKCE, and exchanges the authorization code, refreshes tokens and revokes them on logout with one network call (`cf.fetch`) to the Cognito domain, added as an origin of the same distribution. It reads and writes the same cookies as the `Authenticator` class. See [its README](./cloudfront-functions/README.md) for the setup, the features it does not support compared with this package, and a deployable test stack with an end-to-end test.
+
 ## Reference - Authenticator Class
 
 ### Authenticator(params)
