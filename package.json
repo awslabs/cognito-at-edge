@@ -11,7 +11,10 @@
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"files": [
-		"/dist"
+		"/dist",
+		"/cloudfront-functions/README.md",
+		"/cloudfront-functions/build.js",
+		"/cloudfront-functions/viewer-request.js"
 	],
 	"scripts": {
 		"build": "tsc",

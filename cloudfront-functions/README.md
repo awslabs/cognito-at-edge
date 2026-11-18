@@ -40,7 +40,14 @@ If Cognito cannot be reached (DNS or TLS failure, the fixed 1 second timeout, or
    node cloudfront-functions/build.js settings.json > function.js
    ```
 
-   From Node.js (for example in a CDK app): `require('./cloudfront-functions/build.js').buildFunction(settings)`. The build checks the settings, the 10 KB function size limit and syntax that the runtime does not support.
+   From the npm package, the same files ship under `node_modules/cognito-at-edge/cloudfront-functions/`:
+
+   ```shell
+   npm install cognito-at-edge
+   node node_modules/cognito-at-edge/cloudfront-functions/build.js settings.json > function.js
+   ```
+
+   From Node.js (for example in a CDK app): `require('cognito-at-edge/cloudfront-functions/build.js').buildFunction(settings)` (or `./cloudfront-functions/build.js` from a clone). The build checks the settings, the 10 KB function size limit and syntax that the runtime does not support.
 
 2. Create a KeyValueStore and write each public key of the user pool to it, one key per key ID: key `jwk.<kid>`, value `{"n":"...","e":"..."}` from `https://cognito-idp.<region>.amazonaws.com/<userPoolId>/.well-known/jwks.json`. A KVS value is limited to 1 KB, so the whole JWKS does not fit in one key. [`test-stack/lambda/seed-jwks.mjs`](test-stack/lambda/seed-jwks.mjs) does this as a custom resource. Write the keys again if Cognito rotates them.
 3. Create the CloudFront Function with runtime `cloudfront-js-2.0` and the generated code, associate the KeyValueStore with it, and attach it to your behaviors as a viewer-request function.
